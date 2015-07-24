@@ -1,0 +1,189 @@
+<resources>
+    <string name="app_name">WebAusleser</string>
+    <string name="service_name">WebService</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="underlined"><u>%1$s</u></string>
+    <string name="navTitleSources">Quellen</string>
+    <string name="actionsFor">Aktionen für %1$s</string>
+    <string name="stepsFor">Schritte für %1$s</string>
+    <string name="paramsFor">Parameter für %1$s</string>
+    <string name="addFunction">Funktion hinzufügen&#8230;</string>
+    <string name="addSource">Quelle hinzufügen&#8230;</string>
+    <string name="addAction">Aktion hinzufügen&#8230;</string>
+    <string name="addStep">Schritt hinzufügen&#8230;</string>
+    <string name="newFunction">Funktion hinzufügen</string>
+    <string name="newSource">Quelle hinzufügen</string>
+    <string name="newAction">Aktion hinzufügen</string>
+    <string name="newStep">Schritt hinzufügen</string>
+    <string name="newParameter">"Parameter für %1$s"</string>
+    <string name="newVariable">(neue Variable)</string>
+    <string name="newList">(neue Liste)</string>
+    <string name="inputNewList">Name der neuen Liste:</string>
+    <string name="inputNewVariable">Name der neuen Variablen:</string>
+    <string name="fixedValue">(bestimmter Wert)</string>
+    <string name="inputFixedValue">Bestimmter Wert:</string>
+    <string name="inputName">Name:</string>
+    <string name="ok">OK</string>
+    <string name="back">Zurück</string>
+    <string name="next">Weiter</string>
+    <string name="finish">Fertig stellen</string>
+    <string name="cancel">Abbrechen</string>
+    <string name="yes">Ja</string>
+    <string name="no">Nein</string>
+    <string name="delete">Löschen</string>
+    <string name="up">Nach oben verschieben</string>
+    <string name="down">Nach unten verschieben</string>
+    <string name="sureFunction">"Möchten Sie die Funktion '%1$s' inklusive deren Schritte wirklich unwiderruflich löschen?"</string>
+    <string name="sureSource">"Möchten Sie die Quelle '%1$s' inklusive deren Aktionen wirklich unwiderruflich löschen?"</string>
+    <string name="sureAction">"Möchten Sie die Aktion '%1$s' inklusive deren Schritte wirklich unwiderruflich löschen?"</string>
+    <string name="sureStep">"Möchten Sie den Schritt '%1$s' wirklich unwiderruflich löschen?"</string>
+
+    <string name="setParam1">"'Zuweisen' - Quelle"</string>
+    <string name="setParam2">"'Zuweisen' - Ziel"</string>
+    <string name="addTitle">Addieren</string>
+    <string name="addParam1">Quelle</string>
+    <string name="addParam2">Summand</string>
+    <string name="addParam3">Ziel</string>
+    <string name="subtractParam1">Quelle</string>
+    <string name="subtractParam2">Subtrahend</string>
+    <string name="subtractParam3">Ziel</string>
+    <string name="multiplyParam1">Quelle</string>
+    <string name="multiplyParam2">Faktor</string>
+    <string name="multiplyParam3">Ziel</string>
+    <string name="divideParam1">Quelle</string>
+    <string name="divideParam2">Divisor</string>
+    <string name="divideParam3">Ziel</string>
+    <string name="incrTitle">Inkrementieren</string>
+    <string name="incrParam1">Variable</string>
+    <string name="decrTitle">Dekrementieren</string>
+    <string name="decrParam1">Variable</string>
+    <string name="substringTitle">Teil</string>
+    <string name="substringParam1">Quelle</string>
+    <string name="substringParam2">Startposition</string>
+    <string name="substringParam3">Länge</string>
+    <string name="substringParam4">Ziel</string>
+    <string name="trimTitle">Glätten</string>
+    <string name="trimParam1">Quelle</string>
+    <string name="trimParam2">Ziel</string>
+    <string name="ltrimTitle">LinksGlätten</string>
+    <string name="ltrimParam1">Quelle</string>
+    <string name="ltrimParam2">Ziel</string>
+    <string name="rtrimTitle">RechtsGlätten</string>
+    <string name="rtrimParam1">Quelle</string>
+    <string name="rtrimParam2">Ziel</string>
+    <string name="replaceTitle">Ersetzen</string>
+    <string name="replaceParam1">Quelle</string>
+    <string name="replaceParam2">Suche</string>
+    <string name="replaceParam3">Ersetze</string>
+    <string name="replaceParam4">Ziel</string>
+
+    <string-array name="ifOperations">
+        <item>lt</item>
+        <item>gt</item>
+        <item>le</item>
+        <item>ge</item>
+        <item>eq</item>
+        <item>ne</item>
+        <item>startswith</item>
+        <item>nstartswith</item>
+        <item>endswith</item>
+        <item>nendswith</item>
+        <item>contains</item>
+        <item>ncontains</item>
+        <item>inlist</item>
+        <item>ninlist</item>
+    </string-array>
+
+    <string-array name="ifOperationsNames">
+        <item>kleiner als</item>
+        <item>größer als</item>
+        <item>kleiner gleich</item>
+        <item>größer gleich</item>
+        <item>gleich</item>
+        <item>nicht gleich</item>
+        <item>beginnt mit</item>
+        <item>beginnt nicht mit</item>
+        <item>endet mit</item>
+        <item>endet nicht mit</item>
+        <item>enthält</item>
+        <item>enthält nicht</item>
+        <item>Liste enthält</item>
+        <item>Liste enthält nicht</item>
+    </string-array>
+
+    <string-array name="builtInSteps">
+        <item>set</item>
+        <item>add</item>
+        <item>subtract</item>
+        <item>multiply</item>
+        <item>divide</item>
+        <item>incr</item>
+        <item>decr</item>
+        <item>substring</item>
+        <item>trim</item>
+        <item>ltrim</item>
+        <item>rtrim</item>
+        <item>replace</item>
+        <item>putlist</item>
+        <item>foreach</item>
+        <item>if</item>
+        <item>doloop</item>
+        <item>for</item>
+        <item>split</item>
+        <item>concat</item>
+        <item>left</item>
+        <item>right</item>
+        <item>instr</item>
+        <item>len</item>
+        <item>instrrev</item>
+        <item>httpget</item>
+        <item>httpput</item>
+        <item>execjs</item>
+        <item>makemsg</item>
+        <item>reverse</item>
+        <item>exitfor</item>
+        <item>exitforeach</item>
+        <item>exitdoloop</item>
+        <item>exitifelse</item>
+        <item>end</item>
+    </string-array>
+
+    <string-array name="builtInStepsNames">
+        <item>Zuweisen (Quelle, Ziel)</item>
+        <item>Addieren (Quelle, Summand, Ziel)</item>
+        <item>Subtrahieren (Quelle, Subtrahend, Ziel)</item>
+        <item>Multiplizieren (Quelle, Faktor, Ziel)</item>
+        <item>Dividieren (Quelle, Divisor, Ziel)</item>
+        <item>Inkrementieren (Quelle, Ziel)</item>
+        <item>Dekrementieren (Quelle, Ziel)</item>
+        <item>Extrahieren (Quelle, Start, Länge, Ziel)</item>
+        <item>Glätten (Quelle, Ziel)</item>
+        <item>Linksglätten (Quelle, Ziel)</item>
+        <item>Rechtsglätten (Quelle, Ziel)</item>
+        <item>Ersetzen (Quelle, Suchen, Ersetzen, Ziel)</item>
+        <item>Liste ergänzen (Quelle, Element, Ziel)</item>
+        <item>Listenschleife (Liste, Schleifenvariable, Wiederholungsschritte)</item>
+        <item>Bedingung (Wert1, Operator, Wert2, Dann-Schritte, Sonst-Schritte)</item>
+        <item>Wiederholung (Kopfbedingung, Fußbedingung, Wiederholungsschritte)</item>
+        <item>Nummernschleife (Von, Bis, Wiederholungsschritte)</item>
+        <item>Splitten (Quelle, Trenner, Ziel)</item>
+        <item>Verketten (Linksquelle, Rechtsquelle, Ziel)</item>
+        <item>Linkstext (Quelle, Zeichenanzahl, Ziel)</item>
+        <item>Rechtstext (Quelle, Zeichenanzahl, Ziel)t</item>
+        <item>Vorwärtssuche (Quelle, Startposition, Suchtext, Ziel)</item>
+        <item>Länge (Quelle, Ziel)</item>
+        <item>Rückwärtssuche (Quelle, Startposition, Suchtext, Ziel)</item>
+        <item>Get-Download (URL, Modus, Ziel)</item>
+        <item>Put-Download (URL, Modus, Ziel)</item>
+        <item>Javascript-Befehl (Befehl, Ziel)</item>
+        <item>Meldung (Betreff, Inhalt, Bild, Link)</item>
+        <item>Text spiegeln (Quelle, Ziel)</item>
+        <item>Nummernschleifenausstieg</item>
+        <item>Listenschleifenausstieg</item>
+        <item>Wiederholungsausstieg</item>
+        <item>Dann-Sonst-Ausstieg</item>
+        <item>Job-Ende</item>
+    </string-array>
+
+</resources>
