@@ -35,9 +35,13 @@
     <string name="up">Nach oben verschieben</string>
     <string name="down">Nach unten verschieben</string>
     <string name="sureFunction">"Möchten Sie die Funktion '%1$s' inklusive deren Schritte wirklich unwiderruflich löschen?"</string>
+    <string name="sureFunctions">"Möchten Sie die ausgewählten Funktionen inklusive deren Schritte wirklich unwiderruflich löschen?"</string>
     <string name="sureSource">"Möchten Sie die Quelle '%1$s' inklusive deren Aktionen wirklich unwiderruflich löschen?"</string>
+    <string name="sureSources">"Möchten Sie die ausgewählten Quellen inklusive deren Aktionen wirklich unwiderruflich löschen?"</string>
     <string name="sureAction">"Möchten Sie die Aktion '%1$s' inklusive deren Schritte wirklich unwiderruflich löschen?"</string>
+    <string name="sureActions">"Möchten Sie die ausgewählten Aktion inklusive deren Schritte wirklich unwiderruflich löschen?"</string>
     <string name="sureStep">"Möchten Sie den Schritt '%1$s' wirklich unwiderruflich löschen?"</string>
+    <string name="sureSteps">"Möchten Sie die ausgewählten Schritte wirklich unwiderruflich löschen?"</string>
 
     <string name="setParam1">"'Zuweisen' - Quelle"</string>
     <string name="setParam2">"'Zuweisen' - Ziel"</string>
