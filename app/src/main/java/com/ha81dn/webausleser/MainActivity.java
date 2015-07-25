@@ -72,7 +72,12 @@ public class MainActivity extends AppCompatActivity {
     static ArrayList<Param> insertParams;
     private boolean mRecentlyBackPressed = false;
     private Handler mExitHandler = new Handler();
-    private Runnable mExitRunnable = () -> mRecentlyBackPressed = false;
+    private Runnable mExitRunnable = new Runnable() {
+        @Override
+        public void run() {
+            mRecentlyBackPressed = false;
+        }
+    };
 
     static void displaySection(Context context, String section, int id, String name) {
         Intent intentUpdate = new Intent();
@@ -517,30 +522,33 @@ public class MainActivity extends AppCompatActivity {
                     case R.id.menu_item_delete:
                         actionMode.finish();
 
-                        DialogInterface.OnClickListener dialogClickListener = (DialogInterface dialog, int which) -> {
-                            switch (which) {
-                                case DialogInterface.BUTTON_POSITIVE:
-                                    //Yes button clicked
-                                    SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
-                                    Cursor c;
+                        DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                switch (which) {
+                                    case DialogInterface.BUTTON_POSITIVE:
+                                        //Yes button clicked
+                                        SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
+                                        Cursor c;
 
-                                    for (int i = 0; i < selectedItems.size(); i++) {
-                                        c = db.rawQuery("delete from actions where id = ?", new String[]{Integer.toString(mDataset.get(selectedItems.keyAt(i)).getId())});
-                                        if (c != null) {
-                                            c.moveToFirst();
-                                            c.close();
+                                        for (int i = 0; i < selectedItems.size(); i++) {
+                                            c = db.rawQuery("delete from actions where id = ?", new String[]{Integer.toString(mDataset.get(selectedItems.keyAt(i)).getId())});
+                                            if (c != null) {
+                                                c.moveToFirst();
+                                                c.close();
+                                            }
+                                            mDataset.remove(i);
                                         }
-                                        mDataset.remove(i);
-                                    }
 
-                                    db.close();
+                                        db.close();
 
-                                    mAdapter.notifyDataSetChanged();
-                                    break;
+                                        mAdapter.notifyDataSetChanged();
+                                        break;
 
-                                case DialogInterface.BUTTON_NEGATIVE:
-                                    //No button clicked
-                                    break;
+                                    case DialogInterface.BUTTON_NEGATIVE:
+                                        //No button clicked
+                                        break;
+                                }
                             }
                         };
 
@@ -558,42 +566,46 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onItemDismiss(int position) {
+            public void onItemDismiss(final int position) {
                 final int removedId = mDataset.get(position).getId();
 
-                DialogInterface.OnClickListener dialogClickListener = (DialogInterface dialog, int which) -> {
-                    SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
-                    Cursor c = null;
-                    switch (which) {
-                        case DialogInterface.BUTTON_POSITIVE:
-                            // Yes button clicked
+                DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
+                        Cursor c = null;
+                        switch (which) {
+                            case DialogInterface.BUTTON_POSITIVE:
+                                // Yes button clicked
 
-                            c = db.rawQuery("delete from actions where id = ?", new String[]{Integer.toString(removedId)});
-                            if (c != null) c.moveToFirst();
+                                c = db.rawQuery("delete from actions where id = ?", new String[]{Integer.toString(removedId)});
+                                if (c != null) c.moveToFirst();
 
-                            break;
+                                break;
 
-                        case DialogInterface.BUTTON_NEGATIVE:
-                            // No button clicked
-                            c = db.rawQuery("select source_id, sort_nr, name from actions where id = ?", new String[]{Integer.toString(removedId)});
-                            if (c != null) {
-                                if (c.moveToFirst()) {
-                                    mDataset.add(position, new Action(removedId, c.getInt(0), c.getInt(1), c.getString(2)));
+                            case DialogInterface.BUTTON_NEGATIVE:
+                                // No button clicked
+                                c = db.rawQuery("select source_id, sort_nr, name from actions where id = ?", new String[]{Integer.toString(removedId)});
+                                if (c != null) {
+                                    if (c.moveToFirst()) {
+                                        mDataset.add(position, new Action(removedId, c.getInt(0), c.getInt(1), c.getString(2)));
+                                    }
                                 }
-                            }
-                            notifyItemInserted(position);
+                                notifyItemInserted(position);
 
-                            break;
+                                break;
+                        }
+                        if (c != null) c.close();
+                        db.close();
                     }
-                    if (c != null) c.close();
-                    db.close();
                 };
 
                 mDataset.remove(position);
                 notifyItemRemoved(position);
 
                 AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-                builder.setMessage(getString(R.string.sureAction, mDataset.get(position).getName())).setPositiveButton(getString(R.string.yes), dialogClickListener)
+                builder.setMessage(getString(R.string.sureAction, mDataset.get(position).getName()))
+                        .setPositiveButton(getString(R.string.yes), dialogClickListener)
                         .setNegativeButton(getString(R.string.no), dialogClickListener).show();
             }
 
@@ -652,8 +664,9 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        private class FunctionAdapter extends RecyclerView.Adapter<FunctionAdapter.ViewHolder> implements ItemTouchHelperAdapter {
+        private class FunctionAdapter extends RecyclerView.Adapter<FunctionAdapter.ViewHolder> implements ItemTouchHelperAdapter, ActionMode.Callback {
             public ArrayList<Action> mDataset;
+            private SparseBooleanArray selectedItems;
 
             // Provide a suitable constructor (depends on the kind of dataset)
             public FunctionAdapter(ArrayList<Action> myDataset) {
@@ -668,8 +681,7 @@ public class MainActivity extends AppCompatActivity {
                 View v = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.view_main, parent, false);
                 // set the view's size, margins, paddings and layout parameters
-                ViewHolder vh = new ViewHolder((TextView) v);
-                return vh;
+                return new ViewHolder((TextView) v);
             }
 
             // Replace the contents of a view (invoked by the layout manager)
@@ -691,9 +703,115 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onItemDismiss(int position) {
+            public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
+                getActivity().getMenuInflater().inflate(R.menu.list_item_context, menu);
+                appActionMode = actionMode;
+                return true;
+            }
+
+            @Override
+            public boolean onPrepareActionMode(ActionMode actionMode, Menu menu) {
+                return false;
+            }
+
+            @Override
+            public void onDestroyActionMode(ActionMode actionMode) {
+                selectedItems.clear();
+                appActionMode = null;
+            }
+
+            @Override
+            public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
+                if (selectedItems.size() == 0) return false;
+                switch (menuItem.getItemId()) {
+                    case R.id.menu_item_delete:
+                        actionMode.finish();
+
+                        DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                switch (which) {
+                                    case DialogInterface.BUTTON_POSITIVE:
+                                        //Yes button clicked
+                                        SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
+                                        Cursor c;
+
+                                        for (int i = 0; i < selectedItems.size(); i++) {
+                                            c = db.rawQuery("delete from actions where id = ?", new String[]{Integer.toString(mDataset.get(selectedItems.keyAt(i)).getId())});
+                                            if (c != null) {
+                                                c.moveToFirst();
+                                                c.close();
+                                            }
+                                            mDataset.remove(i);
+                                        }
+
+                                        db.close();
+
+                                        mAdapter.notifyDataSetChanged();
+                                        break;
+
+                                    case DialogInterface.BUTTON_NEGATIVE:
+                                        //No button clicked
+                                        break;
+                                }
+                            }
+                        };
+
+                        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                        builder.setMessage(getString(R.string.sureFunctions))
+                                .setPositiveButton(getString(R.string.yes), dialogClickListener)
+                                .setNegativeButton(getString(R.string.no), dialogClickListener).show();
+
+                        selectedItems.clear();
+                        return true;
+                    default:
+                        break;
+                }
+                return false;
+            }
+
+            @Override
+            public void onItemDismiss(final int position) {
+                final int removedId = mDataset.get(position).getId();
+
+                DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
+                        Cursor c = null;
+                        switch (which) {
+                            case DialogInterface.BUTTON_POSITIVE:
+                                // Yes button clicked
+
+                                c = db.rawQuery("delete from actions where id = ?", new String[]{Integer.toString(removedId)});
+                                if (c != null) c.moveToFirst();
+
+                                break;
+
+                            case DialogInterface.BUTTON_NEGATIVE:
+                                // No button clicked
+                                c = db.rawQuery("select source_id, sort_nr, name from actions where id = ?", new String[]{Integer.toString(removedId)});
+                                if (c != null) {
+                                    if (c.moveToFirst()) {
+                                        mDataset.add(position, new Action(removedId, c.getInt(0), c.getInt(1), c.getString(2)));
+                                    }
+                                }
+                                notifyItemInserted(position);
+
+                                break;
+                        }
+                        if (c != null) c.close();
+                        db.close();
+                    }
+                };
+
                 mDataset.remove(position);
                 notifyItemRemoved(position);
+
+                AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                builder.setMessage(getString(R.string.sureFunction, mDataset.get(position).getName()))
+                        .setPositiveButton(getString(R.string.yes), dialogClickListener)
+                        .setNegativeButton(getString(R.string.no), dialogClickListener).show();
             }
 
             @Override
@@ -711,7 +829,7 @@ public class MainActivity extends AppCompatActivity {
                 public boolean isSelectable = true;
 
                 public ViewHolder(TextView v) {
-                    super(v, singleSelector);
+                    super(v);
                     v.setOnClickListener(this);
                     v.setOnLongClickListener(this);
                     v.setLongClickable(true);
@@ -720,37 +838,41 @@ public class MainActivity extends AppCompatActivity {
 
                 @Override
                 public void onClick(View view) {
-                    if (!singleSelector.isSelectable() || !singleSelector.tapSelection(this)) {
+                    int pos = getAdapterPosition();
+                    if (appActionMode == null) {
                         Intent intentUpdate = new Intent();
                         intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
                         intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
                         intentUpdate.putExtra("TAPITEM", "FUNCTION");
-                        intentUpdate.putExtra("ID", mDataset.get(getPosition()).getId());
-                        intentUpdate.putExtra("NAME", mDataset.get(getPosition()).getName());
+                        intentUpdate.putExtra("ID", mDataset.get(pos).getId());
+                        intentUpdate.putExtra("NAME", mDataset.get(pos).getName());
                         mTextView.getContext().sendBroadcast(intentUpdate);
+                    } else {
+                        if (selectedItems.get(pos, false)) {
+                            selectedItems.delete(pos);
+                        } else {
+                            selectedItems.put(pos, true);
+                        }
+                        view.setActivated(!view.isActivated());
+                        notifyItemChanged(pos);
                     }
                 }
 
                 @Override
                 public boolean onLongClick(View v) {
-                    if (isSelectable()) {
+                    if (appActionMode == null) {
                         AppCompatActivity activity = (AppCompatActivity) getActivity();
-                        activity.startSupportActionMode(deleteMode);
-                        singleSelector.setSelected(this, true);
+                        appActionMode = activity.startSupportActionMode(FunctionAdapter.this);
                         return true;
                     }
                     return false;
                 }
-
-                @Override
-                public boolean isSelectable() {
-                    return isSelectable;
-                }
             }
         }
 
-        private class ParamAdapter extends RecyclerView.Adapter<ParamAdapter.ViewHolder> implements ItemTouchHelperAdapter {
+        private class ParamAdapter extends RecyclerView.Adapter<ParamAdapter.ViewHolder> implements ItemTouchHelperAdapter, ActionMode.Callback {
             public ArrayList<Param> mDataset;
+            private SparseBooleanArray selectedItems;
 
             // Provide a suitable constructor (depends on the kind of dataset)
             public ParamAdapter(ArrayList<Param> myDataset) {
@@ -765,8 +887,7 @@ public class MainActivity extends AppCompatActivity {
                 View v = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.view_main, parent, false);
                 // set the view's size, margins, paddings and layout parameters
-                ViewHolder vh = new ViewHolder((TextView) v);
-                return vh;
+                return new ViewHolder((TextView) v);
             }
 
             // Replace the contents of a view (invoked by the layout manager)
@@ -787,15 +908,39 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
+            public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
+                getActivity().getMenuInflater().inflate(R.menu.list_item_context, menu);
+                appActionMode = actionMode;
+                return true;
+            }
+
+            @Override
+            public boolean onPrepareActionMode(ActionMode actionMode, Menu menu) {
+                return false;
+            }
+
+            @Override
+            public void onDestroyActionMode(ActionMode actionMode) {
+                selectedItems.clear();
+                appActionMode = null;
+            }
+
+            @Override
+            public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
+                if (selectedItems.size() == 0) return false;
+                switch (menuItem.getItemId()) {
+                    default:
+                        break;
+                }
+                return false;
+            }
+
+            @Override
             public void onItemDismiss(int position) {
-                mDataset.remove(position);
-                notifyItemRemoved(position);
             }
 
             @Override
             public void onItemMove(int from, int to) {
-                Collections.swap(mDataset, from, to);
-                notifyItemMoved(from, to);
             }
 
             // Provide a reference to the views for each data item
@@ -807,7 +952,7 @@ public class MainActivity extends AppCompatActivity {
                 public boolean isSelectable = true;
 
                 public ViewHolder(TextView v) {
-                    super(v, singleSelector);
+                    super(v);
                     v.setOnClickListener(this);
                     v.setOnLongClickListener(this);
                     v.setLongClickable(false);
@@ -816,36 +961,41 @@ public class MainActivity extends AppCompatActivity {
 
                 @Override
                 public void onClick(View view) {
-                    if (!singleSelector.isSelectable() || !singleSelector.tapSelection(this)) {
+                    int pos = getAdapterPosition();
+                    if (appActionMode == null) {
                         Intent intentUpdate = new Intent();
                         intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
                         intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
                         intentUpdate.putExtra("TAPITEM", "PARAM");
-                        intentUpdate.putExtra("ID", mDataset.get(getPosition()).getId());
+                        intentUpdate.putExtra("ID", mDataset.get(pos).getId());
+                        intentUpdate.putExtra("VALUE", mDataset.get(pos).getValue());
                         mTextView.getContext().sendBroadcast(intentUpdate);
+                    } else {
+                        if (selectedItems.get(pos, false)) {
+                            selectedItems.delete(pos);
+                        } else {
+                            selectedItems.put(pos, true);
+                        }
+                        view.setActivated(!view.isActivated());
+                        notifyItemChanged(pos);
                     }
                 }
 
                 @Override
                 public boolean onLongClick(View v) {
-                    if (isSelectable()) {
+                    if (appActionMode == null) {
                         AppCompatActivity activity = (AppCompatActivity) getActivity();
-                        activity.startSupportActionMode(deleteMode);
-                        singleSelector.setSelected(this, true);
+                        appActionMode = activity.startSupportActionMode(ParamAdapter.this);
                         return true;
                     }
                     return false;
                 }
-
-                @Override
-                public boolean isSelectable() {
-                    return isSelectable;
-                }
             }
         }
 
-        private class SourceAdapter extends RecyclerView.Adapter<SourceAdapter.ViewHolder> implements ItemTouchHelperAdapter {
+        private class SourceAdapter extends RecyclerView.Adapter<SourceAdapter.ViewHolder> implements ItemTouchHelperAdapter, ActionMode.Callback {
             public ArrayList<Source> mDataset;
+            private SparseBooleanArray selectedItems;
 
             // Provide a suitable constructor (depends on the kind of dataset)
             public SourceAdapter(ArrayList<Source> myDataset) {
@@ -860,8 +1010,7 @@ public class MainActivity extends AppCompatActivity {
                 View v = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.view_main, parent, false);
                 // set the view's size, margins, paddings and layout parameters
-                ViewHolder vh = new ViewHolder((TextView) v);
-                return vh;
+                return new ViewHolder((TextView) v);
             }
 
             // Replace the contents of a view (invoked by the layout manager)
@@ -883,15 +1032,119 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onItemDismiss(int position) {
+            public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
+                getActivity().getMenuInflater().inflate(R.menu.list_item_context, menu);
+                appActionMode = actionMode;
+                return true;
+            }
+
+            @Override
+            public boolean onPrepareActionMode(ActionMode actionMode, Menu menu) {
+                return false;
+            }
+
+            @Override
+            public void onDestroyActionMode(ActionMode actionMode) {
+                selectedItems.clear();
+                appActionMode = null;
+            }
+
+            @Override
+            public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
+                if (selectedItems.size() == 0) return false;
+                switch (menuItem.getItemId()) {
+                    case R.id.menu_item_delete:
+                        actionMode.finish();
+
+                        DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                switch (which) {
+                                    case DialogInterface.BUTTON_POSITIVE:
+                                        //Yes button clicked
+                                        SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
+                                        Cursor c;
+
+                                        for (int i = 0; i < selectedItems.size(); i++) {
+                                            c = db.rawQuery("delete from sources where id = ?", new String[]{Integer.toString(mDataset.get(selectedItems.keyAt(i)).getId())});
+                                            if (c != null) {
+                                                c.moveToFirst();
+                                                c.close();
+                                            }
+                                            mDataset.remove(i);
+                                        }
+
+                                        db.close();
+
+                                        mAdapter.notifyDataSetChanged();
+                                        break;
+
+                                    case DialogInterface.BUTTON_NEGATIVE:
+                                        //No button clicked
+                                        break;
+                                }
+                            }
+                        };
+
+                        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                        builder.setMessage(getString(R.string.sureSources))
+                                .setPositiveButton(getString(R.string.yes), dialogClickListener)
+                                .setNegativeButton(getString(R.string.no), dialogClickListener).show();
+
+                        selectedItems.clear();
+                        return true;
+                    default:
+                        break;
+                }
+                return false;
+            }
+
+            @Override
+            public void onItemDismiss(final int position) {
+                final int removedId = mDataset.get(position).getId();
+
+                DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
+                        Cursor c = null;
+                        switch (which) {
+                            case DialogInterface.BUTTON_POSITIVE:
+                                // Yes button clicked
+
+                                c = db.rawQuery("delete from sources where id = ?", new String[]{Integer.toString(removedId)});
+                                if (c != null) c.moveToFirst();
+
+                                break;
+
+                            case DialogInterface.BUTTON_NEGATIVE:
+                                // No button clicked
+                                c = db.rawQuery("select name from sources where id = ?", new String[]{Integer.toString(removedId)});
+                                if (c != null) {
+                                    if (c.moveToFirst()) {
+                                        mDataset.add(position, new Source(removedId, c.getString(0)));
+                                    }
+                                }
+                                notifyItemInserted(position);
+
+                                break;
+                        }
+                        if (c != null) c.close();
+                        db.close();
+                    }
+                };
+
                 mDataset.remove(position);
                 notifyItemRemoved(position);
+
+                AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                builder.setMessage(getString(R.string.sureSource, mDataset.get(position).getName()))
+                        .setPositiveButton(getString(R.string.yes), dialogClickListener)
+                        .setNegativeButton(getString(R.string.no), dialogClickListener).show();
             }
 
             @Override
             public void onItemMove(int from, int to) {
-                Collections.swap(mDataset, from, to);
-                notifyItemMoved(from, to);
             }
 
             // Provide a reference to the views for each data item
@@ -903,7 +1156,7 @@ public class MainActivity extends AppCompatActivity {
                 public boolean isSelectable = true;
 
                 public ViewHolder(TextView v) {
-                    super(v, singleSelector);
+                    super(v);
                     v.setOnClickListener(this);
                     v.setOnLongClickListener(this);
                     v.setLongClickable(true);
@@ -912,37 +1165,41 @@ public class MainActivity extends AppCompatActivity {
 
                 @Override
                 public void onClick(View view) {
-                    if (!singleSelector.isSelectable() || !singleSelector.tapSelection(this)) {
+                    int pos = getAdapterPosition();
+                    if (appActionMode == null) {
                         Intent intentUpdate = new Intent();
                         intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
                         intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
                         intentUpdate.putExtra("TAPITEM", "SOURCE");
-                        intentUpdate.putExtra("ID", mDataset.get(getPosition()).getId());
-                        intentUpdate.putExtra("NAME", mDataset.get(getPosition()).getName());
+                        intentUpdate.putExtra("ID", mDataset.get(pos).getId());
+                        intentUpdate.putExtra("NAME", mDataset.get(pos).getName());
                         mTextView.getContext().sendBroadcast(intentUpdate);
+                    } else {
+                        if (selectedItems.get(pos, false)) {
+                            selectedItems.delete(pos);
+                        } else {
+                            selectedItems.put(pos, true);
+                        }
+                        view.setActivated(!view.isActivated());
+                        notifyItemChanged(pos);
                     }
                 }
 
                 @Override
                 public boolean onLongClick(View v) {
-                    if (isSelectable()) {
+                    if (appActionMode == null) {
                         AppCompatActivity activity = (AppCompatActivity) getActivity();
-                        activity.startSupportActionMode(deleteMode);
-                        singleSelector.setSelected(this, true);
+                        appActionMode = activity.startSupportActionMode(SourceAdapter.this);
                         return true;
                     }
                     return false;
                 }
-
-                @Override
-                public boolean isSelectable() {
-                    return isSelectable;
-                }
             }
         }
 
-        private class StepAdapter extends RecyclerView.Adapter<StepAdapter.ViewHolder> implements ItemTouchHelperAdapter {
+        private class StepAdapter extends RecyclerView.Adapter<StepAdapter.ViewHolder> implements ItemTouchHelperAdapter, ActionMode.Callback {
             public ArrayList<Step> mDataset;
+            private SparseBooleanArray selectedItems;
 
             // Provide a suitable constructor (depends on the kind of dataset)
             public StepAdapter(ArrayList<Step> myDataset) {
@@ -957,8 +1214,7 @@ public class MainActivity extends AppCompatActivity {
                 View v = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.view_main, parent, false);
                 // set the view's size, margins, paddings and layout parameters
-                ViewHolder vh = new ViewHolder((TextView) v);
-                return vh;
+                return new ViewHolder((TextView) v);
             }
 
             // Replace the contents of a view (invoked by the layout manager)
@@ -980,9 +1236,129 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onItemDismiss(int position) {
+            public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
+                getActivity().getMenuInflater().inflate(R.menu.list_item_context, menu);
+                appActionMode = actionMode;
+                return true;
+            }
+
+            @Override
+            public boolean onPrepareActionMode(ActionMode actionMode, Menu menu) {
+                return false;
+            }
+
+            @Override
+            public void onDestroyActionMode(ActionMode actionMode) {
+                selectedItems.clear();
+                appActionMode = null;
+            }
+
+            @Override
+            public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
+                if (selectedItems.size() == 0) return false;
+                switch (menuItem.getItemId()) {
+                    case R.id.menu_item_delete:
+                        actionMode.finish();
+
+                        DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                switch (which) {
+                                    case DialogInterface.BUTTON_POSITIVE:
+                                        //Yes button clicked
+                                        SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
+                                        Cursor c;
+
+                                        for (int i = 0; i < selectedItems.size(); i++) {
+                                            c = db.rawQuery("delete from steps where id = ?", new String[]{Integer.toString(mDataset.get(selectedItems.keyAt(i)).getId())});
+                                            if (c != null) {
+                                                c.moveToFirst();
+                                                c.close();
+                                            }
+                                            mDataset.remove(i);
+                                        }
+
+                                        db.close();
+
+                                        mAdapter.notifyDataSetChanged();
+                                        break;
+
+                                    case DialogInterface.BUTTON_NEGATIVE:
+                                        //No button clicked
+                                        break;
+                                }
+                            }
+                        };
+
+                        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                        builder.setMessage(getString(R.string.sureSteps))
+                                .setPositiveButton(getString(R.string.yes), dialogClickListener)
+                                .setNegativeButton(getString(R.string.no), dialogClickListener).show();
+
+                        selectedItems.clear();
+                        return true;
+                    default:
+                        break;
+                }
+                return false;
+            }
+
+            @Override
+            public void onItemDismiss(final int position) {
+                final int removedId = mDataset.get(position).getId();
+
+                DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
+                        Cursor c = null;
+                        switch (which) {
+                            case DialogInterface.BUTTON_POSITIVE:
+                                // Yes button clicked
+
+                                c = db.rawQuery("delete from steps where id = ?", new String[]{Integer.toString(removedId)});
+                                if (c != null) c.moveToFirst();
+
+                                break;
+
+                            case DialogInterface.BUTTON_NEGATIVE:
+                                // No button clicked
+                                c = db.rawQuery("select action_id, sort_nr, function, call_flag, parent_id from steps where id = ?", new String[]{Integer.toString(removedId)});
+                                if (c != null) {
+                                    if (c.moveToFirst()) {
+                                        String function = c.getString(2);
+                                        String tmp;
+                                        Cursor cF;
+                                        int flag = c.getInt(3);
+                                        if (flag == 1) {
+                                            cF = db.rawQuery("select name from actions where action_id = ?", new String[]{function});
+                                            tmp = "ERROR_FUNCTION_MISSING";
+                                            if (cF != null) {
+                                                if (cF.moveToFirst()) {
+                                                    tmp = cF.getString(0);
+                                                }
+                                                cF.close();
+                                            }
+                                        } else tmp = function;
+                                        mDataset.add(position, new Step(removedId, c.getInt(0), c.getInt(1), function, tmp, flag, c.getInt(4)));
+                                    }
+                                }
+                                notifyItemInserted(position);
+
+                                break;
+                        }
+                        if (c != null) c.close();
+                        db.close();
+                    }
+                };
+
                 mDataset.remove(position);
                 notifyItemRemoved(position);
+
+                AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                builder.setMessage(getString(R.string.sureStep, mDataset.get(position).getName()))
+                        .setPositiveButton(getString(R.string.yes), dialogClickListener)
+                        .setNegativeButton(getString(R.string.no), dialogClickListener).show();
             }
 
             @Override
@@ -1000,7 +1376,7 @@ public class MainActivity extends AppCompatActivity {
                 public boolean isSelectable = true;
 
                 public ViewHolder(TextView v) {
-                    super(v, singleSelector);
+                    super(v);
                     v.setOnClickListener(this);
                     v.setOnLongClickListener(this);
                     v.setLongClickable(true);
@@ -1009,32 +1385,34 @@ public class MainActivity extends AppCompatActivity {
 
                 @Override
                 public void onClick(View view) {
-                    if (!singleSelector.isSelectable() || !singleSelector.tapSelection(this)) {
+                    int pos = getAdapterPosition();
+                    if (appActionMode == null) {
                         Intent intentUpdate = new Intent();
                         intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
                         intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
                         intentUpdate.putExtra("TAPITEM", "STEP");
-                        intentUpdate.putExtra("ID", mDataset.get(getPosition()).getId());
-                        intentUpdate.putExtra("CALL", mDataset.get(getPosition()).getCallFlag());
-                        intentUpdate.putExtra("NAME", mDataset.get(getPosition()).getName());
+                        intentUpdate.putExtra("ID", mDataset.get(pos).getId());
+                        intentUpdate.putExtra("NAME", mDataset.get(pos).getName());
                         mTextView.getContext().sendBroadcast(intentUpdate);
+                    } else {
+                        if (selectedItems.get(pos, false)) {
+                            selectedItems.delete(pos);
+                        } else {
+                            selectedItems.put(pos, true);
+                        }
+                        view.setActivated(!view.isActivated());
+                        notifyItemChanged(pos);
                     }
                 }
 
                 @Override
                 public boolean onLongClick(View v) {
-                    if (isSelectable()) {
+                    if (appActionMode == null) {
                         AppCompatActivity activity = (AppCompatActivity) getActivity();
-                        activity.startSupportActionMode(deleteMode);
-                        singleSelector.setSelected(this, true);
+                        appActionMode = activity.startSupportActionMode(StepAdapter.this);
                         return true;
                     }
                     return false;
-                }
-
-                @Override
-                public boolean isSelectable() {
-                    return isSelectable;
                 }
             }
         }
@@ -1043,8 +1421,6 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onReceive(Context context, Intent intent) {
-                int id;
-
                 String tmp = intent.getStringExtra("TAPITEM");
                 if (tmp != null)
                     handleTaps(context, tmp, intent.getIntExtra("ID", -1), intent.getStringExtra("NAME"));
