@@ -14,6 +14,7 @@ import android.os.Handler;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.view.ActionMode;
+import android.support.v7.widget.CardView;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.RecyclerView.ViewHolder;
@@ -48,9 +49,9 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /* ToDo-Liste
-- alle Adapter nach Vorbild des ActionAdapter auf neue Drag-Swipe-Kontext-Logik umbauen
+- Rippelei ordentlich machen
+- alle Adapter nach Vorbild des SourceAdapter auf neue Drag-Swipe-Kontext-Logik umbauen
 - Anlegerei mit Assistent für sämtliche vorgefertigten Schritte
-- Lambdadisierung
 - Umbenennen per ActionMode
 - Kopieren per ActionMode
 - Aktion zur Funktion umwandeln
@@ -59,6 +60,7 @@ import java.util.TreeMap;
 - Absturzbehandlung wie beim MioKlicker, nur mit eigener Activity statt Tabpage
 - Testcenter entwickeln
 - Widget entwickeln
+- Import/Export entwickeln
 
 */
 
@@ -277,7 +279,7 @@ public class MainActivity extends AppCompatActivity {
         static TextView navTitle;
         static RecyclerView mRecyclerView;
         private RecyclerView.LayoutManager mLayoutManager;
-        private RecyclerView.Adapter mAdapter = null;
+        private SelectableAdapter mAdapter = null;
         private mainBroadcastReceiver mainBR;
         private boolean initializationFinished = false;
 
@@ -365,6 +367,11 @@ public class MainActivity extends AppCompatActivity {
             text.setMovementMethod(LinkMovementMethod.getInstance());
         }
 
+        private interface ClickListener {
+            void onItemClicked(int position);
+
+            boolean onItemLongClicked(int position);
+        }
 
         private interface ItemTouchHelperAdapter {
 
@@ -459,9 +466,9 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        private class ActionAdapter extends RecyclerView.Adapter<ActionAdapter.ViewHolder> implements ItemTouchHelperAdapter, ActionMode.Callback {
+        private class ActionAdapter extends SelectableAdapter<ActionAdapter.ViewHolder> implements ItemTouchHelperAdapter, ActionMode.Callback {
             public ArrayList<Action> mDataset;
-            private SparseBooleanArray selectedItems;
+            private SparseBooleanArray selectedItems = new SparseBooleanArray();
 
             // Provide a suitable constructor (depends on the kind of dataset)
             public ActionAdapter(ArrayList<Action> myDataset) {
@@ -476,7 +483,7 @@ public class MainActivity extends AppCompatActivity {
                 View v = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.view_main, parent, false);
                 // set the view's size, margins, paddings and layout parameters
-                return new ViewHolder((TextView) v);
+                return new ViewHolder((CardView) v);
             }
 
             // Replace the contents of a view (invoked by the layout manager)
@@ -622,12 +629,15 @@ public class MainActivity extends AppCompatActivity {
                 // each data item is just a string in this case
                 public TextView mTextView;
 
-                public ViewHolder(TextView v) {
+                public ViewHolder(CardView v) {
                     super(v);
+                    v.setFocusable(true);
+                    v.setClickable(true);
+                    v.setLongClickable(true);
                     v.setOnClickListener(this);
                     v.setOnLongClickListener(this);
                     v.setLongClickable(true);
-                    mTextView = v;
+                    mTextView = (TextView) v.findViewById(R.id.my_text_view);
                 }
 
                 @Override
@@ -666,7 +676,7 @@ public class MainActivity extends AppCompatActivity {
 
         private class FunctionAdapter extends RecyclerView.Adapter<FunctionAdapter.ViewHolder> implements ItemTouchHelperAdapter, ActionMode.Callback {
             public ArrayList<Action> mDataset;
-            private SparseBooleanArray selectedItems;
+            private SparseBooleanArray selectedItems = new SparseBooleanArray();
 
             // Provide a suitable constructor (depends on the kind of dataset)
             public FunctionAdapter(ArrayList<Action> myDataset) {
@@ -681,7 +691,7 @@ public class MainActivity extends AppCompatActivity {
                 View v = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.view_main, parent, false);
                 // set the view's size, margins, paddings and layout parameters
-                return new ViewHolder((TextView) v);
+                return new ViewHolder((CardView) v);
             }
 
             // Replace the contents of a view (invoked by the layout manager)
@@ -828,12 +838,15 @@ public class MainActivity extends AppCompatActivity {
                 public TextView mTextView;
                 public boolean isSelectable = true;
 
-                public ViewHolder(TextView v) {
+                public ViewHolder(CardView v) {
                     super(v);
+                    v.setFocusable(true);
+                    v.setClickable(true);
+                    v.setLongClickable(true);
                     v.setOnClickListener(this);
                     v.setOnLongClickListener(this);
                     v.setLongClickable(true);
-                    mTextView = v;
+                    mTextView = (TextView) v.findViewById(R.id.my_text_view);
                 }
 
                 @Override
@@ -870,9 +883,9 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        private class ParamAdapter extends RecyclerView.Adapter<ParamAdapter.ViewHolder> implements ItemTouchHelperAdapter, ActionMode.Callback {
+        private class ParamAdapter extends SelectableAdapter<ParamAdapter.ViewHolder> implements ItemTouchHelperAdapter, ActionMode.Callback {
             public ArrayList<Param> mDataset;
-            private SparseBooleanArray selectedItems;
+            private SparseBooleanArray selectedItems = new SparseBooleanArray();
 
             // Provide a suitable constructor (depends on the kind of dataset)
             public ParamAdapter(ArrayList<Param> myDataset) {
@@ -887,7 +900,7 @@ public class MainActivity extends AppCompatActivity {
                 View v = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.view_main, parent, false);
                 // set the view's size, margins, paddings and layout parameters
-                return new ViewHolder((TextView) v);
+                return new ViewHolder((CardView) v);
             }
 
             // Replace the contents of a view (invoked by the layout manager)
@@ -921,7 +934,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onDestroyActionMode(ActionMode actionMode) {
-                selectedItems.clear();
+                clearSelection();
                 appActionMode = null;
             }
 
@@ -951,12 +964,15 @@ public class MainActivity extends AppCompatActivity {
                 public TextView mTextView;
                 public boolean isSelectable = true;
 
-                public ViewHolder(TextView v) {
+                public ViewHolder(CardView v) {
                     super(v);
+                    v.setFocusable(true);
+                    v.setClickable(true);
+                    v.setLongClickable(true);
                     v.setOnClickListener(this);
                     v.setOnLongClickListener(this);
                     v.setLongClickable(false);
-                    mTextView = v;
+                    mTextView = (TextView) v.findViewById(R.id.my_text_view);
                 }
 
                 @Override
@@ -993,9 +1009,9 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        private class SourceAdapter extends RecyclerView.Adapter<SourceAdapter.ViewHolder> implements ItemTouchHelperAdapter, ActionMode.Callback {
+        private class SourceAdapter extends SelectableAdapter<SourceAdapter.ViewHolder> implements ItemTouchHelperAdapter, ClickListener, ActionMode.Callback {
             public ArrayList<Source> mDataset;
-            private SparseBooleanArray selectedItems;
+            private SparseBooleanArray selectedItems = new SparseBooleanArray();
 
             // Provide a suitable constructor (depends on the kind of dataset)
             public SourceAdapter(ArrayList<Source> myDataset) {
@@ -1010,7 +1026,7 @@ public class MainActivity extends AppCompatActivity {
                 View v = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.view_main, parent, false);
                 // set the view's size, margins, paddings and layout parameters
-                return new ViewHolder((TextView) v);
+                return new ViewHolder((CardView) v, this);
             }
 
             // Replace the contents of a view (invoked by the layout manager)
@@ -1020,9 +1036,10 @@ public class MainActivity extends AppCompatActivity {
                 // - replace the contents of the view with that element
                 if (mDataset.get(position).getId() == -1) {
                     holder.mTextView.setText(Html.fromHtml("<i>" + mDataset.get(position).getName() + "</i>"));
-                    holder.isSelectable = false;
                 } else
                     holder.mTextView.setText(mDataset.get(position).getName());
+                // Highlight the item if it's selected
+                holder.selectedOverlay.setVisibility(isSelected(position) ? View.VISIBLE : View.INVISIBLE);
             }
 
             // Return the size of your dataset (invoked by the layout manager)
@@ -1032,9 +1049,35 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
+            public void onItemClicked(int position) {
+                if (appActionMode != null) {
+                    toggleSelection(position);
+                }
+            }
+
+            @Override
+            public void toggledSelection(int position) {
+                int count = getSelectedItemCount();
+                if (count == 0) {
+                    appActionMode.finish();
+                } else {
+                    appActionMode.setTitle(String.valueOf(count));
+                    appActionMode.invalidate();
+                }
+            }
+
+            @Override
+            public boolean onItemLongClicked(int position) {
+                if (appActionMode == null) {
+                    appActionMode = ((AppCompatActivity) getActivity()).startSupportActionMode(this);
+                }
+                toggleSelection(position);
+                return true;
+            }
+
+            @Override
             public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
                 getActivity().getMenuInflater().inflate(R.menu.list_item_context, menu);
-                appActionMode = actionMode;
                 return true;
             }
 
@@ -1045,7 +1088,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onDestroyActionMode(ActionMode actionMode) {
-                selectedItems.clear();
+                clearSelection();
                 appActionMode = null;
             }
 
@@ -1054,8 +1097,6 @@ public class MainActivity extends AppCompatActivity {
                 if (selectedItems.size() == 0) return false;
                 switch (menuItem.getItemId()) {
                     case R.id.menu_item_delete:
-                        actionMode.finish();
-
                         DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
@@ -1091,7 +1132,7 @@ public class MainActivity extends AppCompatActivity {
                                 .setPositiveButton(getString(R.string.yes), dialogClickListener)
                                 .setNegativeButton(getString(R.string.no), dialogClickListener).show();
 
-                        selectedItems.clear();
+                        actionMode.finish();
                         return true;
                     default:
                         break;
@@ -1153,53 +1194,39 @@ public class MainActivity extends AppCompatActivity {
             protected class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener {
                 // each data item is just a string in this case
                 public TextView mTextView;
-                public boolean isSelectable = true;
+                public View selectedOverlay;
+                private ClickListener listener;
 
-                public ViewHolder(TextView v) {
+                public ViewHolder(CardView v, ClickListener listener) {
                     super(v);
+                    v.setFocusable(true);
+                    v.setClickable(true);
+                    v.setLongClickable(true);
                     v.setOnClickListener(this);
                     v.setOnLongClickListener(this);
-                    v.setLongClickable(true);
-                    mTextView = v;
+                    mTextView = (TextView) v.findViewById(R.id.my_text_view);
+                    selectedOverlay = v.findViewById(R.id.selected_overlay);
+                    this.listener = listener;
                 }
 
                 @Override
                 public void onClick(View view) {
-                    int pos = getAdapterPosition();
-                    if (appActionMode == null) {
-                        Intent intentUpdate = new Intent();
-                        intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
-                        intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
-                        intentUpdate.putExtra("TAPITEM", "SOURCE");
-                        intentUpdate.putExtra("ID", mDataset.get(pos).getId());
-                        intentUpdate.putExtra("NAME", mDataset.get(pos).getName());
-                        mTextView.getContext().sendBroadcast(intentUpdate);
-                    } else {
-                        if (selectedItems.get(pos, false)) {
-                            selectedItems.delete(pos);
-                        } else {
-                            selectedItems.put(pos, true);
-                        }
-                        view.setActivated(!view.isActivated());
-                        notifyItemChanged(pos);
+                    if (listener != null) {
+                        listener.onItemClicked(getAdapterPosition());
                     }
                 }
 
                 @Override
                 public boolean onLongClick(View v) {
-                    if (appActionMode == null) {
-                        AppCompatActivity activity = (AppCompatActivity) getActivity();
-                        appActionMode = activity.startSupportActionMode(SourceAdapter.this);
-                        return true;
-                    }
+                    if (listener != null) return listener.onItemLongClicked(getAdapterPosition());
                     return false;
                 }
             }
         }
 
-        private class StepAdapter extends RecyclerView.Adapter<StepAdapter.ViewHolder> implements ItemTouchHelperAdapter, ActionMode.Callback {
+        private class StepAdapter extends SelectableAdapter<StepAdapter.ViewHolder> implements ItemTouchHelperAdapter, ActionMode.Callback {
             public ArrayList<Step> mDataset;
-            private SparseBooleanArray selectedItems;
+            private SparseBooleanArray selectedItems = new SparseBooleanArray();
 
             // Provide a suitable constructor (depends on the kind of dataset)
             public StepAdapter(ArrayList<Step> myDataset) {
@@ -1377,6 +1404,9 @@ public class MainActivity extends AppCompatActivity {
 
                 public ViewHolder(TextView v) {
                     super(v);
+                    v.setFocusable(true);
+                    v.setClickable(true);
+                    v.setLongClickable(true);
                     v.setOnClickListener(this);
                     v.setOnLongClickListener(this);
                     v.setLongClickable(true);

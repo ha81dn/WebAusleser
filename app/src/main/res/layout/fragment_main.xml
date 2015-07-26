@@ -1,37 +1,40 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical">
 
     <LinearLayout
-        android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/accent">
+        android:background="@color/accent"
+        android:orientation="vertical">
 
         <TextView
+            android:id="@+id/main_title"
             android:layout_width="fill_parent"
             android:layout_height="fill_parent"
-            android:layout_marginTop="2dp"
             android:layout_marginBottom="3dp"
-            android:layout_marginStart="2dp"
             android:layout_marginEnd="2dp"
-            android:textAppearance="?android:attr/textAppearanceLarge"
-            android:gravity="center"
-            android:text="Navigationskopfzeile"
-            android:textSize="@dimen/abc_text_size_title_material_toolbar"
-            android:id="@+id/main_title"
+            android:layout_marginStart="2dp"
+            android:layout_marginTop="2dp"
             android:ellipsize="end"
-            android:singleLine="true"
-            android:linksClickable="true"
             android:focusable="false"
+            android:gravity="center"
+            android:linksClickable="true"
+            android:singleLine="true"
+            android:text="Navigationskopfzeile"
+            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:textSize="@dimen/abc_text_size_title_material_toolbar"
             android:textStyle="bold"/>
     </LinearLayout>
 
     <android.support.v7.widget.RecyclerView xmlns:android="http://schemas.android.com/apk/res/android"
         android:id="@+id/main_recycler"
-        android:scrollbars="vertical"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
+        android:layout_height="match_parent"
+        android:background="@color/primaryDark"
+        android:scrollbars="vertical">
+
+    </android.support.v7.widget.RecyclerView>
 
 </LinearLayout>
