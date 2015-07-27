@@ -14,10 +14,8 @@ import android.os.Handler;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.view.ActionMode;
-import android.support.v7.widget.CardView;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.RecyclerView.ViewHolder;
 import android.support.v7.widget.helper.ItemTouchHelper;
 import android.text.Html;
 import android.text.InputType;
@@ -45,12 +43,14 @@ import com.ha81dn.webausleser.backend.tables.Step;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
 /* ToDo-Liste
-- Rippelei ordentlich machen
+- normalen onClick() erweitern um intentUpdate
 - alle Adapter nach Vorbild des SourceAdapter auf neue Drag-Swipe-Kontext-Logik umbauen
+- Hinzufüge-Item durch FAB (floating action button) ersetzen
 - Anlegerei mit Assistent für sämtliche vorgefertigten Schritte
 - Umbenennen per ActionMode
 - Kopieren per ActionMode
@@ -61,6 +61,7 @@ import java.util.TreeMap;
 - Testcenter entwickeln
 - Widget entwickeln
 - Import/Export entwickeln
+- ERL Rippelei ordentlich machen
 
 */
 
@@ -423,7 +424,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public int getMovementFlags(RecyclerView recyclerView, ViewHolder viewHolder) {
+            public int getMovementFlags(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder) {
                 // ToDo: hier je nach ViewHolder einschreiten, wenn nicht drag- oder swipebar
                 int dragFlags = ItemTouchHelper.UP | ItemTouchHelper.DOWN;
                 int swipeFlags = ItemTouchHelper.START | ItemTouchHelper.END;
@@ -431,8 +432,8 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public boolean onMove(RecyclerView recyclerView, ViewHolder viewHolder,
-                                  ViewHolder target) {
+            public boolean onMove(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder,
+                                  RecyclerView.ViewHolder target) {
                 mAdapter.onItemMove(viewHolder.getAdapterPosition(), target.getAdapterPosition());
                 return true;
             }
@@ -461,14 +462,46 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onSwiped(ViewHolder viewHolder, int direction) {
+            public void onSwiped(RecyclerView.ViewHolder viewHolder, int direction) {
                 mAdapter.onItemDismiss(viewHolder.getAdapterPosition());
             }
         }
 
-        private class ActionAdapter extends SelectableAdapter<ActionAdapter.ViewHolder> implements ItemTouchHelperAdapter, ActionMode.Callback {
+        // Provide a reference to the views for each data item
+        // Complex data items may need more than one view per item, and
+        // you provide access to all the views for a data item in a view holder
+        protected class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener {
+            // each data item is just a string in this case
+            public TextView mTextView;
+            private ClickListener listener;
+
+            public ViewHolder(TextView v, ClickListener listener) {
+                super(v);
+                v.setFocusable(true);
+                v.setClickable(true);
+                v.setLongClickable(true);
+                v.setOnClickListener(this);
+                v.setOnLongClickListener(this);
+                mTextView = (TextView) v.findViewById(R.id.my_text_view);
+                this.listener = listener;
+            }
+
+            @Override
+            public void onClick(View view) {
+                if (listener != null) {
+                    listener.onItemClicked(getAdapterPosition());
+                }
+            }
+
+            @Override
+            public boolean onLongClick(View v) {
+                if (listener != null) return listener.onItemLongClicked(getAdapterPosition());
+                return false;
+            }
+        }
+
+        private class ActionAdapter extends SelectableAdapter<ViewHolder> implements ItemTouchHelperAdapter, ClickListener, ActionMode.Callback {
             public ArrayList<Action> mDataset;
-            private SparseBooleanArray selectedItems = new SparseBooleanArray();
 
             // Provide a suitable constructor (depends on the kind of dataset)
             public ActionAdapter(ArrayList<Action> myDataset) {
@@ -477,18 +510,18 @@ public class MainActivity extends AppCompatActivity {
 
             // Create new views (invoked by the layout manager)
             @Override
-            public ActionAdapter.ViewHolder onCreateViewHolder(ViewGroup parent,
+            public ViewHolder onCreateViewHolder(ViewGroup parent,
                                                                int viewType) {
                 // create a new view
                 View v = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.view_main, parent, false);
                 // set the view's size, margins, paddings and layout parameters
-                return new ViewHolder((CardView) v);
+                return new ViewHolder((TextView) v, this);
             }
 
             // Replace the contents of a view (invoked by the layout manager)
             @Override
-            public void onBindViewHolder(ActionAdapter.ViewHolder holder, int position) {
+            public void onBindViewHolder(ViewHolder holder, int position) {
                 // - get element from your dataset at this position
                 // - replace the contents of the view with that element
                 if (mDataset.get(position).getId() == -1) {
@@ -496,6 +529,8 @@ public class MainActivity extends AppCompatActivity {
                     // holder.isSelectable = false;
                 } else
                     holder.mTextView.setText(mDataset.get(position).getName());
+                // Highlight the item if it's selected
+                holder.itemView.setSelected(isSelected(position));
             }
 
             // Return the size of your dataset (invoked by the layout manager)
@@ -505,9 +540,35 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
+            public void onItemClicked(int position) {
+                if (appActionMode != null) {
+                    toggleSelection(position);
+                }
+            }
+
+            @Override
+            public void toggledSelection(int position) {
+                int count = getSelectedItemCount();
+                if (count == 0) {
+                    appActionMode.finish();
+                } else {
+                    appActionMode.setTitle(String.valueOf(count));
+                    appActionMode.invalidate();
+                }
+            }
+
+            @Override
+            public boolean onItemLongClicked(int position) {
+                if (appActionMode == null) {
+                    appActionMode = ((AppCompatActivity) getActivity()).startSupportActionMode(this);
+                }
+                toggleSelection(position);
+                return true;
+            }
+
+            @Override
             public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
                 getActivity().getMenuInflater().inflate(R.menu.list_item_context, menu);
-                appActionMode = actionMode;
                 return true;
             }
 
@@ -518,13 +579,14 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onDestroyActionMode(ActionMode actionMode) {
-                selectedItems.clear();
+                clearSelection();
                 appActionMode = null;
             }
 
+
             @Override
             public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
-                if (selectedItems.size() == 0) return false;
+                if (getSelectedItemCount() == 0) return false;
                 switch (menuItem.getItemId()) {
                     case R.id.menu_item_delete:
                         actionMode.finish();
@@ -538,8 +600,9 @@ public class MainActivity extends AppCompatActivity {
                                         SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
                                         Cursor c;
 
-                                        for (int i = 0; i < selectedItems.size(); i++) {
-                                            c = db.rawQuery("delete from actions where id = ?", new String[]{Integer.toString(mDataset.get(selectedItems.keyAt(i)).getId())});
+                                        List<Integer> items = getSelectedItems();
+                                        for (int i = 0; i < items.size(); i++) {
+                                            c = db.rawQuery("delete from actions where id = ?", new String[]{Integer.toString(mDataset.get(items.get(i)).getId())});
                                             if (c != null) {
                                                 c.moveToFirst();
                                                 c.close();
@@ -564,7 +627,7 @@ public class MainActivity extends AppCompatActivity {
                                 .setPositiveButton(getString(R.string.yes), dialogClickListener)
                                 .setNegativeButton(getString(R.string.no), dialogClickListener).show();
 
-                        selectedItems.clear();
+                        actionMode.finish();
                         return true;
                     default:
                         break;
@@ -607,13 +670,13 @@ public class MainActivity extends AppCompatActivity {
                     }
                 };
 
-                mDataset.remove(position);
-                notifyItemRemoved(position);
-
                 AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
                 builder.setMessage(getString(R.string.sureAction, mDataset.get(position).getName()))
                         .setPositiveButton(getString(R.string.yes), dialogClickListener)
                         .setNegativeButton(getString(R.string.no), dialogClickListener).show();
+
+                mDataset.remove(position);
+                notifyItemRemoved(position);
             }
 
             @Override
@@ -621,62 +684,10 @@ public class MainActivity extends AppCompatActivity {
                 Collections.swap(mDataset, from, to);
                 notifyItemMoved(from, to);
             }
-
-            // Provide a reference to the views for each data item
-            // Complex data items may need more than one view per item, and
-            // you provide access to all the views for a data item in a view holder
-            protected class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener {
-                // each data item is just a string in this case
-                public TextView mTextView;
-
-                public ViewHolder(CardView v) {
-                    super(v);
-                    v.setFocusable(true);
-                    v.setClickable(true);
-                    v.setLongClickable(true);
-                    v.setOnClickListener(this);
-                    v.setOnLongClickListener(this);
-                    v.setLongClickable(true);
-                    mTextView = (TextView) v.findViewById(R.id.my_text_view);
-                }
-
-                @Override
-                public void onClick(View view) {
-                    int pos = getAdapterPosition();
-                    if (appActionMode == null) {
-                        Intent intentUpdate = new Intent();
-                        intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
-                        intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
-                        intentUpdate.putExtra("TAPITEM", "ACTION");
-                        intentUpdate.putExtra("ID", mDataset.get(pos).getId());
-                        intentUpdate.putExtra("NAME", mDataset.get(pos).getName());
-                        mTextView.getContext().sendBroadcast(intentUpdate);
-                    } else {
-                        if (selectedItems.get(pos, false)) {
-                            selectedItems.delete(pos);
-                        } else {
-                            selectedItems.put(pos, true);
-                        }
-                        view.setActivated(!view.isActivated());
-                        notifyItemChanged(pos);
-                    }
-                }
-
-                @Override
-                public boolean onLongClick(View v) {
-                    if (appActionMode == null) {
-                        AppCompatActivity activity = (AppCompatActivity) getActivity();
-                        appActionMode = activity.startSupportActionMode(ActionAdapter.this);
-                        return true;
-                    }
-                    return false;
-                }
-            }
         }
 
-        private class FunctionAdapter extends RecyclerView.Adapter<FunctionAdapter.ViewHolder> implements ItemTouchHelperAdapter, ActionMode.Callback {
+        private class FunctionAdapter extends SelectableAdapter<ViewHolder> implements ItemTouchHelperAdapter, ClickListener, ActionMode.Callback {
             public ArrayList<Action> mDataset;
-            private SparseBooleanArray selectedItems = new SparseBooleanArray();
 
             // Provide a suitable constructor (depends on the kind of dataset)
             public FunctionAdapter(ArrayList<Action> myDataset) {
@@ -685,13 +696,13 @@ public class MainActivity extends AppCompatActivity {
 
             // Create new views (invoked by the layout manager)
             @Override
-            public FunctionAdapter.ViewHolder onCreateViewHolder(ViewGroup parent,
+            public ViewHolder onCreateViewHolder(ViewGroup parent,
                                                                  int viewType) {
                 // create a new view
                 View v = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.view_main, parent, false);
                 // set the view's size, margins, paddings and layout parameters
-                return new ViewHolder((CardView) v);
+                return new ViewHolder((TextView) v, this);
             }
 
             // Replace the contents of a view (invoked by the layout manager)
@@ -701,9 +712,10 @@ public class MainActivity extends AppCompatActivity {
                 // - replace the contents of the view with that element
                 if (mDataset.get(position).getId() == -1) {
                     holder.mTextView.setText(Html.fromHtml("<i>" + mDataset.get(position).getName() + "</i>"));
-                    holder.isSelectable = false;
                 } else
                     holder.mTextView.setText(mDataset.get(position).getName());
+                // Highlight the item if it's selected
+                holder.itemView.setSelected(isSelected(position));
             }
 
             // Return the size of your dataset (invoked by the layout manager)
@@ -713,9 +725,35 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
+            public void onItemClicked(int position) {
+                if (appActionMode != null) {
+                    toggleSelection(position);
+                }
+            }
+
+            @Override
+            public void toggledSelection(int position) {
+                int count = getSelectedItemCount();
+                if (count == 0) {
+                    appActionMode.finish();
+                } else {
+                    appActionMode.setTitle(String.valueOf(count));
+                    appActionMode.invalidate();
+                }
+            }
+
+            @Override
+            public boolean onItemLongClicked(int position) {
+                if (appActionMode == null) {
+                    appActionMode = ((AppCompatActivity) getActivity()).startSupportActionMode(this);
+                }
+                toggleSelection(position);
+                return true;
+            }
+
+            @Override
             public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
                 getActivity().getMenuInflater().inflate(R.menu.list_item_context, menu);
-                appActionMode = actionMode;
                 return true;
             }
 
@@ -726,13 +764,13 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onDestroyActionMode(ActionMode actionMode) {
-                selectedItems.clear();
+                clearSelection();
                 appActionMode = null;
             }
 
             @Override
             public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
-                if (selectedItems.size() == 0) return false;
+                if (getSelectedItemCount() == 0) return false;
                 switch (menuItem.getItemId()) {
                     case R.id.menu_item_delete:
                         actionMode.finish();
@@ -746,8 +784,9 @@ public class MainActivity extends AppCompatActivity {
                                         SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
                                         Cursor c;
 
-                                        for (int i = 0; i < selectedItems.size(); i++) {
-                                            c = db.rawQuery("delete from actions where id = ?", new String[]{Integer.toString(mDataset.get(selectedItems.keyAt(i)).getId())});
+                                        List<Integer> items = getSelectedItems();
+                                        for (int i = 0; i < items.size(); i++) {
+                                            c = db.rawQuery("delete from actions where id = ?", new String[]{Integer.toString(mDataset.get(items.get(i)).getId())});
                                             if (c != null) {
                                                 c.moveToFirst();
                                                 c.close();
@@ -772,7 +811,7 @@ public class MainActivity extends AppCompatActivity {
                                 .setPositiveButton(getString(R.string.yes), dialogClickListener)
                                 .setNegativeButton(getString(R.string.no), dialogClickListener).show();
 
-                        selectedItems.clear();
+                        actionMode.finish();
                         return true;
                     default:
                         break;
@@ -815,13 +854,13 @@ public class MainActivity extends AppCompatActivity {
                     }
                 };
 
-                mDataset.remove(position);
-                notifyItemRemoved(position);
-
                 AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
                 builder.setMessage(getString(R.string.sureFunction, mDataset.get(position).getName()))
                         .setPositiveButton(getString(R.string.yes), dialogClickListener)
                         .setNegativeButton(getString(R.string.no), dialogClickListener).show();
+
+                mDataset.remove(position);
+                notifyItemRemoved(position);
             }
 
             @Override
@@ -829,59 +868,6 @@ public class MainActivity extends AppCompatActivity {
                 Collections.swap(mDataset, from, to);
                 notifyItemMoved(from, to);
             }
-
-            // Provide a reference to the views for each data item
-            // Complex data items may need more than one view per item, and
-            // you provide access to all the views for a data item in a view holder
-            protected class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener {
-                // each data item is just a string in this case
-                public TextView mTextView;
-                public boolean isSelectable = true;
-
-                public ViewHolder(CardView v) {
-                    super(v);
-                    v.setFocusable(true);
-                    v.setClickable(true);
-                    v.setLongClickable(true);
-                    v.setOnClickListener(this);
-                    v.setOnLongClickListener(this);
-                    v.setLongClickable(true);
-                    mTextView = (TextView) v.findViewById(R.id.my_text_view);
-                }
-
-                @Override
-                public void onClick(View view) {
-                    int pos = getAdapterPosition();
-                    if (appActionMode == null) {
-                        Intent intentUpdate = new Intent();
-                        intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
-                        intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
-                        intentUpdate.putExtra("TAPITEM", "FUNCTION");
-                        intentUpdate.putExtra("ID", mDataset.get(pos).getId());
-                        intentUpdate.putExtra("NAME", mDataset.get(pos).getName());
-                        mTextView.getContext().sendBroadcast(intentUpdate);
-                    } else {
-                        if (selectedItems.get(pos, false)) {
-                            selectedItems.delete(pos);
-                        } else {
-                            selectedItems.put(pos, true);
-                        }
-                        view.setActivated(!view.isActivated());
-                        notifyItemChanged(pos);
-                    }
-                }
-
-                @Override
-                public boolean onLongClick(View v) {
-                    if (appActionMode == null) {
-                        AppCompatActivity activity = (AppCompatActivity) getActivity();
-                        appActionMode = activity.startSupportActionMode(FunctionAdapter.this);
-                        return true;
-                    }
-                    return false;
-                }
-            }
-        }
 
         private class ParamAdapter extends SelectableAdapter<ParamAdapter.ViewHolder> implements ItemTouchHelperAdapter, ActionMode.Callback {
             public ArrayList<Param> mDataset;
@@ -900,7 +886,7 @@ public class MainActivity extends AppCompatActivity {
                 View v = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.view_main, parent, false);
                 // set the view's size, margins, paddings and layout parameters
-                return new ViewHolder((CardView) v);
+                return new ViewHolder((TextView) v);
             }
 
             // Replace the contents of a view (invoked by the layout manager)
@@ -964,7 +950,7 @@ public class MainActivity extends AppCompatActivity {
                 public TextView mTextView;
                 public boolean isSelectable = true;
 
-                public ViewHolder(CardView v) {
+                public ViewHolder(TextView v) {
                     super(v);
                     v.setFocusable(true);
                     v.setClickable(true);
@@ -1009,9 +995,8 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        private class SourceAdapter extends SelectableAdapter<SourceAdapter.ViewHolder> implements ItemTouchHelperAdapter, ClickListener, ActionMode.Callback {
+            private class SourceAdapter extends SelectableAdapter<ViewHolder> implements ItemTouchHelperAdapter, ClickListener, ActionMode.Callback {
             public ArrayList<Source> mDataset;
-            private SparseBooleanArray selectedItems = new SparseBooleanArray();
 
             // Provide a suitable constructor (depends on the kind of dataset)
             public SourceAdapter(ArrayList<Source> myDataset) {
@@ -1020,13 +1005,13 @@ public class MainActivity extends AppCompatActivity {
 
             // Create new views (invoked by the layout manager)
             @Override
-            public SourceAdapter.ViewHolder onCreateViewHolder(ViewGroup parent,
+            public ViewHolder onCreateViewHolder(ViewGroup parent,
                                                                int viewType) {
                 // create a new view
                 View v = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.view_main, parent, false);
                 // set the view's size, margins, paddings and layout parameters
-                return new ViewHolder((CardView) v, this);
+                return new ViewHolder((TextView) v, this);
             }
 
             // Replace the contents of a view (invoked by the layout manager)
@@ -1039,7 +1024,7 @@ public class MainActivity extends AppCompatActivity {
                 } else
                     holder.mTextView.setText(mDataset.get(position).getName());
                 // Highlight the item if it's selected
-                holder.selectedOverlay.setVisibility(isSelected(position) ? View.VISIBLE : View.INVISIBLE);
+                holder.itemView.setSelected(isSelected(position));
             }
 
             // Return the size of your dataset (invoked by the layout manager)
@@ -1094,7 +1079,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
-                if (selectedItems.size() == 0) return false;
+                if (getSelectedItemCount() == 0) return false;
                 switch (menuItem.getItemId()) {
                     case R.id.menu_item_delete:
                         DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
@@ -1106,8 +1091,9 @@ public class MainActivity extends AppCompatActivity {
                                         SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
                                         Cursor c;
 
-                                        for (int i = 0; i < selectedItems.size(); i++) {
-                                            c = db.rawQuery("delete from sources where id = ?", new String[]{Integer.toString(mDataset.get(selectedItems.keyAt(i)).getId())});
+                                        List<Integer> items = getSelectedItems();
+                                        for (int i = 0; i < items.size(); i++) {
+                                            c = db.rawQuery("delete from sources where id = ?", new String[]{Integer.toString(mDataset.get(items.get(i)).getId())});
                                             if (c != null) {
                                                 c.moveToFirst();
                                                 c.close();
@@ -1167,7 +1153,6 @@ public class MainActivity extends AppCompatActivity {
                                     }
                                 }
                                 notifyItemInserted(position);
-
                                 break;
                         }
                         if (c != null) c.close();
@@ -1175,53 +1160,19 @@ public class MainActivity extends AppCompatActivity {
                     }
                 };
 
-                mDataset.remove(position);
-                notifyItemRemoved(position);
-
                 AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
                 builder.setMessage(getString(R.string.sureSource, mDataset.get(position).getName()))
                         .setPositiveButton(getString(R.string.yes), dialogClickListener)
                         .setNegativeButton(getString(R.string.no), dialogClickListener).show();
+
+                mDataset.remove(position);
+                notifyItemRemoved(position);
             }
 
             @Override
             public void onItemMove(int from, int to) {
             }
 
-            // Provide a reference to the views for each data item
-            // Complex data items may need more than one view per item, and
-            // you provide access to all the views for a data item in a view holder
-            protected class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener {
-                // each data item is just a string in this case
-                public TextView mTextView;
-                public View selectedOverlay;
-                private ClickListener listener;
-
-                public ViewHolder(CardView v, ClickListener listener) {
-                    super(v);
-                    v.setFocusable(true);
-                    v.setClickable(true);
-                    v.setLongClickable(true);
-                    v.setOnClickListener(this);
-                    v.setOnLongClickListener(this);
-                    mTextView = (TextView) v.findViewById(R.id.my_text_view);
-                    selectedOverlay = v.findViewById(R.id.selected_overlay);
-                    this.listener = listener;
-                }
-
-                @Override
-                public void onClick(View view) {
-                    if (listener != null) {
-                        listener.onItemClicked(getAdapterPosition());
-                    }
-                }
-
-                @Override
-                public boolean onLongClick(View v) {
-                    if (listener != null) return listener.onItemLongClicked(getAdapterPosition());
-                    return false;
-                }
-            }
         }
 
         private class StepAdapter extends SelectableAdapter<StepAdapter.ViewHolder> implements ItemTouchHelperAdapter, ActionMode.Callback {
