@@ -23,7 +23,6 @@ import android.text.SpannableStringBuilder;
 import android.text.method.LinkMovementMethod;
 import android.text.style.ClickableSpan;
 import android.text.style.URLSpan;
-import android.util.SparseBooleanArray;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -48,8 +47,8 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /* ToDo-Liste
-- normalen onClick() erweitern um intentUpdate
-- alle Adapter nach Vorbild des SourceAdapter auf neue Drag-Swipe-Kontext-Logik umbauen
+- ERL normalen onClick() erweitern um intentUpdate
+- ERL alle Adapter nach Vorbild des SourceAdapter auf neue Drag-Swipe-Kontext-Logik umbauen
 - Hinzufüge-Item durch FAB (floating action button) ersetzen
 - Anlegerei mit Assistent für sämtliche vorgefertigten Schritte
 - Umbenennen per ActionMode
@@ -333,8 +332,7 @@ public class MainActivity extends AppCompatActivity {
             return rootView;
         }
 
-        private void makeLinkClickable(SpannableStringBuilder strBuilder, final URLSpan span)
-        {
+        private void makeLinkClickable(SpannableStringBuilder strBuilder, final URLSpan span) {
             int start = strBuilder.getSpanStart(span);
             int end = strBuilder.getSpanEnd(span);
             int flags = strBuilder.getSpanFlags(span);
@@ -356,12 +354,11 @@ public class MainActivity extends AppCompatActivity {
             strBuilder.removeSpan(span);
         }
 
-        private void setTextViewHTML(TextView text, String html)
-        {
+        private void setTextViewHTML(TextView text, String html) {
             CharSequence sequence = Html.fromHtml(html);
             SpannableStringBuilder strBuilder = new SpannableStringBuilder(sequence);
             URLSpan[] urls = strBuilder.getSpans(0, sequence.length(), URLSpan.class);
-            for(URLSpan span : urls) {
+            for (URLSpan span : urls) {
                 makeLinkClickable(strBuilder, span);
             }
             text.setText(strBuilder);
@@ -398,7 +395,6 @@ public class MainActivity extends AppCompatActivity {
              * adjusting the underlying data to reflect this removal.
              *
              * @param position The position of the item dismissed.
-             *
              * @see RecyclerView#getAdapterPositionFor(RecyclerView.ViewHolder)
              * @see RecyclerView.ViewHolder#getAdapterPosition()
              */
@@ -445,14 +441,14 @@ public class MainActivity extends AppCompatActivity {
 
                 if (activeSection.equals("ACTIONS")) {
                     ArrayList<Action> list = ((ActionAdapter) mAdapter).mDataset;
-                    for (int i=Math.min(fromPos, toPos); i<=Math.max(fromPos, toPos); i++) {
+                    for (int i = Math.min(fromPos, toPos); i <= Math.max(fromPos, toPos); i++) {
                         c = db.rawQuery("update actions set sort_nr = ? where id = ?", new String[]{Integer.toString(i), Integer.toString(list.get(i).getId())});
                         c.moveToFirst();
                         c.close();
                     }
                 } else if (activeSection.equals("STEPS")) {
                     ArrayList<Step> list = ((StepAdapter) mAdapter).mDataset;
-                    for (int i=Math.min(fromPos, toPos); i<=Math.max(fromPos, toPos); i++) {
+                    for (int i = Math.min(fromPos, toPos); i <= Math.max(fromPos, toPos); i++) {
                         c = db.rawQuery("update steps set sort_nr = ? where id = ?", new String[]{Integer.toString(i), Integer.toString(list.get(i).getId())});
                         c.moveToFirst();
                         c.close();
@@ -511,7 +507,7 @@ public class MainActivity extends AppCompatActivity {
             // Create new views (invoked by the layout manager)
             @Override
             public ViewHolder onCreateViewHolder(ViewGroup parent,
-                                                               int viewType) {
+                                                 int viewType) {
                 // create a new view
                 View v = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.view_main, parent, false);
@@ -526,7 +522,6 @@ public class MainActivity extends AppCompatActivity {
                 // - replace the contents of the view with that element
                 if (mDataset.get(position).getId() == -1) {
                     holder.mTextView.setText(Html.fromHtml("<i>" + mDataset.get(position).getName() + "</i>"));
-                    // holder.isSelectable = false;
                 } else
                     holder.mTextView.setText(mDataset.get(position).getName());
                 // Highlight the item if it's selected
@@ -541,7 +536,15 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onItemClicked(int position) {
-                if (appActionMode != null) {
+                if (appActionMode == null) {
+                    Intent intentUpdate = new Intent();
+                    intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
+                    intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
+                    intentUpdate.putExtra("TAPITEM", "ACTION");
+                    intentUpdate.putExtra("ID", mDataset.get(position).getId());
+                    intentUpdate.putExtra("NAME", mDataset.get(position).getName());
+                    getActivity().sendBroadcast(intentUpdate);
+                } else {
                     toggleSelection(position);
                 }
             }
@@ -583,14 +586,11 @@ public class MainActivity extends AppCompatActivity {
                 appActionMode = null;
             }
 
-
             @Override
             public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
                 if (getSelectedItemCount() == 0) return false;
                 switch (menuItem.getItemId()) {
                     case R.id.menu_item_delete:
-                        actionMode.finish();
-
                         DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
@@ -662,7 +662,6 @@ public class MainActivity extends AppCompatActivity {
                                     }
                                 }
                                 notifyItemInserted(position);
-
                                 break;
                         }
                         if (c != null) c.close();
@@ -697,7 +696,7 @@ public class MainActivity extends AppCompatActivity {
             // Create new views (invoked by the layout manager)
             @Override
             public ViewHolder onCreateViewHolder(ViewGroup parent,
-                                                                 int viewType) {
+                                                 int viewType) {
                 // create a new view
                 View v = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.view_main, parent, false);
@@ -726,7 +725,15 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onItemClicked(int position) {
-                if (appActionMode != null) {
+                if (appActionMode == null) {
+                    Intent intentUpdate = new Intent();
+                    intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
+                    intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
+                    intentUpdate.putExtra("TAPITEM", "FUNCTION");
+                    intentUpdate.putExtra("ID", mDataset.get(position).getId());
+                    intentUpdate.putExtra("NAME", mDataset.get(position).getName());
+                    getActivity().sendBroadcast(intentUpdate);
+                } else {
                     toggleSelection(position);
                 }
             }
@@ -773,8 +780,6 @@ public class MainActivity extends AppCompatActivity {
                 if (getSelectedItemCount() == 0) return false;
                 switch (menuItem.getItemId()) {
                     case R.id.menu_item_delete:
-                        actionMode.finish();
-
                         DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
@@ -868,10 +873,10 @@ public class MainActivity extends AppCompatActivity {
                 Collections.swap(mDataset, from, to);
                 notifyItemMoved(from, to);
             }
+        }
 
-        private class ParamAdapter extends SelectableAdapter<ParamAdapter.ViewHolder> implements ItemTouchHelperAdapter, ActionMode.Callback {
+        private class ParamAdapter extends SelectableAdapter<ViewHolder> implements ItemTouchHelperAdapter, ClickListener {
             public ArrayList<Param> mDataset;
-            private SparseBooleanArray selectedItems = new SparseBooleanArray();
 
             // Provide a suitable constructor (depends on the kind of dataset)
             public ParamAdapter(ArrayList<Param> myDataset) {
@@ -880,13 +885,13 @@ public class MainActivity extends AppCompatActivity {
 
             // Create new views (invoked by the layout manager)
             @Override
-            public ParamAdapter.ViewHolder onCreateViewHolder(ViewGroup parent,
-                                                              int viewType) {
+            public ViewHolder onCreateViewHolder(ViewGroup parent,
+                                                 int viewType) {
                 // create a new view
                 View v = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.view_main, parent, false);
                 // set the view's size, margins, paddings and layout parameters
-                return new ViewHolder((TextView) v);
+                return new ViewHolder((TextView) v, this);
             }
 
             // Replace the contents of a view (invoked by the layout manager)
@@ -894,9 +899,6 @@ public class MainActivity extends AppCompatActivity {
             public void onBindViewHolder(ViewHolder holder, int position) {
                 // - get element from your dataset at this position
                 // - replace the contents of the view with that element
-//        if (mDataset.get(position).getId() == -1)
-//            holder.mTextView.setText(Html.fromHtml("<i>" + mDataset.get(position).getValue() + "</i>"));
-//        else
                 holder.mTextView.setText(mDataset.get(position).getValue());
             }
 
@@ -907,95 +909,33 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
-                getActivity().getMenuInflater().inflate(R.menu.list_item_context, menu);
-                appActionMode = actionMode;
-                return true;
-            }
-
-            @Override
-            public boolean onPrepareActionMode(ActionMode actionMode, Menu menu) {
-                return false;
-            }
-
-            @Override
-            public void onDestroyActionMode(ActionMode actionMode) {
-                clearSelection();
-                appActionMode = null;
-            }
-
-            @Override
-            public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
-                if (selectedItems.size() == 0) return false;
-                switch (menuItem.getItemId()) {
-                    default:
-                        break;
+            public void onItemClicked(int position) {
+                if (appActionMode == null) {
+                    Intent intentUpdate = new Intent();
+                    intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
+                    intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
+                    intentUpdate.putExtra("TAPITEM", "PARAM");
+                    intentUpdate.putExtra("ID", mDataset.get(position).getId());
+                    intentUpdate.putExtra("NAME", mDataset.get(position).getValue());
+                    getActivity().sendBroadcast(intentUpdate);
                 }
+            }
+
+            @Override
+            public boolean onItemLongClicked(int position) {
                 return false;
             }
 
             @Override
-            public void onItemDismiss(int position) {
+            public void onItemDismiss(final int position) {
             }
 
             @Override
             public void onItemMove(int from, int to) {
             }
-
-            // Provide a reference to the views for each data item
-            // Complex data items may need more than one view per item, and
-            // you provide access to all the views for a data item in a view holder
-            protected class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener {
-                // each data item is just a string in this case
-                public TextView mTextView;
-                public boolean isSelectable = true;
-
-                public ViewHolder(TextView v) {
-                    super(v);
-                    v.setFocusable(true);
-                    v.setClickable(true);
-                    v.setLongClickable(true);
-                    v.setOnClickListener(this);
-                    v.setOnLongClickListener(this);
-                    v.setLongClickable(false);
-                    mTextView = (TextView) v.findViewById(R.id.my_text_view);
-                }
-
-                @Override
-                public void onClick(View view) {
-                    int pos = getAdapterPosition();
-                    if (appActionMode == null) {
-                        Intent intentUpdate = new Intent();
-                        intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
-                        intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
-                        intentUpdate.putExtra("TAPITEM", "PARAM");
-                        intentUpdate.putExtra("ID", mDataset.get(pos).getId());
-                        intentUpdate.putExtra("VALUE", mDataset.get(pos).getValue());
-                        mTextView.getContext().sendBroadcast(intentUpdate);
-                    } else {
-                        if (selectedItems.get(pos, false)) {
-                            selectedItems.delete(pos);
-                        } else {
-                            selectedItems.put(pos, true);
-                        }
-                        view.setActivated(!view.isActivated());
-                        notifyItemChanged(pos);
-                    }
-                }
-
-                @Override
-                public boolean onLongClick(View v) {
-                    if (appActionMode == null) {
-                        AppCompatActivity activity = (AppCompatActivity) getActivity();
-                        appActionMode = activity.startSupportActionMode(ParamAdapter.this);
-                        return true;
-                    }
-                    return false;
-                }
-            }
         }
 
-            private class SourceAdapter extends SelectableAdapter<ViewHolder> implements ItemTouchHelperAdapter, ClickListener, ActionMode.Callback {
+        private class SourceAdapter extends SelectableAdapter<ViewHolder> implements ItemTouchHelperAdapter, ClickListener, ActionMode.Callback {
             public ArrayList<Source> mDataset;
 
             // Provide a suitable constructor (depends on the kind of dataset)
@@ -1006,7 +946,7 @@ public class MainActivity extends AppCompatActivity {
             // Create new views (invoked by the layout manager)
             @Override
             public ViewHolder onCreateViewHolder(ViewGroup parent,
-                                                               int viewType) {
+                                                 int viewType) {
                 // create a new view
                 View v = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.view_main, parent, false);
@@ -1035,7 +975,15 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onItemClicked(int position) {
-                if (appActionMode != null) {
+                if (appActionMode == null) {
+                    Intent intentUpdate = new Intent();
+                    intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
+                    intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
+                    intentUpdate.putExtra("TAPITEM", "STEP");
+                    intentUpdate.putExtra("ID", mDataset.get(position).getId());
+                    intentUpdate.putExtra("NAME", mDataset.get(position).getName());
+                    getActivity().sendBroadcast(intentUpdate);
+                } else {
                     toggleSelection(position);
                 }
             }
@@ -1172,12 +1120,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemMove(int from, int to) {
             }
-
         }
 
-        private class StepAdapter extends SelectableAdapter<StepAdapter.ViewHolder> implements ItemTouchHelperAdapter, ActionMode.Callback {
+        private class StepAdapter extends SelectableAdapter<ViewHolder> implements ItemTouchHelperAdapter, ClickListener, ActionMode.Callback {
             public ArrayList<Step> mDataset;
-            private SparseBooleanArray selectedItems = new SparseBooleanArray();
 
             // Provide a suitable constructor (depends on the kind of dataset)
             public StepAdapter(ArrayList<Step> myDataset) {
@@ -1186,13 +1132,13 @@ public class MainActivity extends AppCompatActivity {
 
             // Create new views (invoked by the layout manager)
             @Override
-            public StepAdapter.ViewHolder onCreateViewHolder(ViewGroup parent,
-                                                             int viewType) {
+            public ViewHolder onCreateViewHolder(ViewGroup parent,
+                                                 int viewType) {
                 // create a new view
                 View v = LayoutInflater.from(parent.getContext())
                         .inflate(R.layout.view_main, parent, false);
                 // set the view's size, margins, paddings and layout parameters
-                return new ViewHolder((TextView) v);
+                return new ViewHolder((TextView) v, this);
             }
 
             // Replace the contents of a view (invoked by the layout manager)
@@ -1202,9 +1148,10 @@ public class MainActivity extends AppCompatActivity {
                 // - replace the contents of the view with that element
                 if (mDataset.get(position).getId() == -1) {
                     holder.mTextView.setText(Html.fromHtml("<i>" + mDataset.get(position).getName() + "</i>"));
-                    holder.isSelectable = false;
                 } else
                     holder.mTextView.setText(mDataset.get(position).getName());
+                // Highlight the item if it's selected
+                holder.itemView.setSelected(isSelected(position));
             }
 
             // Return the size of your dataset (invoked by the layout manager)
@@ -1214,9 +1161,43 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
+            public void onItemClicked(int position) {
+                if (appActionMode == null) {
+                    Intent intentUpdate = new Intent();
+                    intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
+                    intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
+                    intentUpdate.putExtra("TAPITEM", "STEP");
+                    intentUpdate.putExtra("ID", mDataset.get(position).getId());
+                    intentUpdate.putExtra("NAME", mDataset.get(position).getName());
+                    getActivity().sendBroadcast(intentUpdate);
+                } else {
+                    toggleSelection(position);
+                }
+            }
+
+            @Override
+            public void toggledSelection(int position) {
+                int count = getSelectedItemCount();
+                if (count == 0) {
+                    appActionMode.finish();
+                } else {
+                    appActionMode.setTitle(String.valueOf(count));
+                    appActionMode.invalidate();
+                }
+            }
+
+            @Override
+            public boolean onItemLongClicked(int position) {
+                if (appActionMode == null) {
+                    appActionMode = ((AppCompatActivity) getActivity()).startSupportActionMode(this);
+                }
+                toggleSelection(position);
+                return true;
+            }
+
+            @Override
             public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
                 getActivity().getMenuInflater().inflate(R.menu.list_item_context, menu);
-                appActionMode = actionMode;
                 return true;
             }
 
@@ -1227,17 +1208,15 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onDestroyActionMode(ActionMode actionMode) {
-                selectedItems.clear();
+                clearSelection();
                 appActionMode = null;
             }
 
             @Override
             public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
-                if (selectedItems.size() == 0) return false;
+                if (getSelectedItemCount() == 0) return false;
                 switch (menuItem.getItemId()) {
                     case R.id.menu_item_delete:
-                        actionMode.finish();
-
                         DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
@@ -1247,8 +1226,9 @@ public class MainActivity extends AppCompatActivity {
                                         SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
                                         Cursor c;
 
-                                        for (int i = 0; i < selectedItems.size(); i++) {
-                                            c = db.rawQuery("delete from steps where id = ?", new String[]{Integer.toString(mDataset.get(selectedItems.keyAt(i)).getId())});
+                                        List<Integer> items = getSelectedItems();
+                                        for (int i = 0; i < items.size(); i++) {
+                                            c = db.rawQuery("delete from steps where id = ?", new String[]{Integer.toString(mDataset.get(items.get(i)).getId())});
                                             if (c != null) {
                                                 c.moveToFirst();
                                                 c.close();
@@ -1273,7 +1253,7 @@ public class MainActivity extends AppCompatActivity {
                                 .setPositiveButton(getString(R.string.yes), dialogClickListener)
                                 .setNegativeButton(getString(R.string.no), dialogClickListener).show();
 
-                        selectedItems.clear();
+                        actionMode.finish();
                         return true;
                     default:
                         break;
@@ -1322,7 +1302,6 @@ public class MainActivity extends AppCompatActivity {
                                     }
                                 }
                                 notifyItemInserted(position);
-
                                 break;
                         }
                         if (c != null) c.close();
@@ -1330,71 +1309,19 @@ public class MainActivity extends AppCompatActivity {
                     }
                 };
 
-                mDataset.remove(position);
-                notifyItemRemoved(position);
-
                 AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
                 builder.setMessage(getString(R.string.sureStep, mDataset.get(position).getName()))
                         .setPositiveButton(getString(R.string.yes), dialogClickListener)
                         .setNegativeButton(getString(R.string.no), dialogClickListener).show();
+
+                mDataset.remove(position);
+                notifyItemRemoved(position);
             }
 
             @Override
             public void onItemMove(int from, int to) {
                 Collections.swap(mDataset, from, to);
                 notifyItemMoved(from, to);
-            }
-
-            // Provide a reference to the views for each data item
-            // Complex data items may need more than one view per item, and
-            // you provide access to all the views for a data item in a view holder
-            protected class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener, View.OnLongClickListener {
-                // each data item is just a string in this case
-                public TextView mTextView;
-                public boolean isSelectable = true;
-
-                public ViewHolder(TextView v) {
-                    super(v);
-                    v.setFocusable(true);
-                    v.setClickable(true);
-                    v.setLongClickable(true);
-                    v.setOnClickListener(this);
-                    v.setOnLongClickListener(this);
-                    v.setLongClickable(true);
-                    mTextView = v;
-                }
-
-                @Override
-                public void onClick(View view) {
-                    int pos = getAdapterPosition();
-                    if (appActionMode == null) {
-                        Intent intentUpdate = new Intent();
-                        intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
-                        intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
-                        intentUpdate.putExtra("TAPITEM", "STEP");
-                        intentUpdate.putExtra("ID", mDataset.get(pos).getId());
-                        intentUpdate.putExtra("NAME", mDataset.get(pos).getName());
-                        mTextView.getContext().sendBroadcast(intentUpdate);
-                    } else {
-                        if (selectedItems.get(pos, false)) {
-                            selectedItems.delete(pos);
-                        } else {
-                            selectedItems.put(pos, true);
-                        }
-                        view.setActivated(!view.isActivated());
-                        notifyItemChanged(pos);
-                    }
-                }
-
-                @Override
-                public boolean onLongClick(View v) {
-                    if (appActionMode == null) {
-                        AppCompatActivity activity = (AppCompatActivity) getActivity();
-                        appActionMode = activity.startSupportActionMode(StepAdapter.this);
-                        return true;
-                    }
-                    return false;
-                }
             }
         }
 
@@ -1438,8 +1365,8 @@ public class MainActivity extends AppCompatActivity {
                     vals.put("name", name);
                     try {
                         db.insert("sources", null, vals);
+                    } catch (Exception e) {
                     }
-                    catch (Exception e){}
                 } else if (section.equals("ACTION") || section.equals("FUNCTION")) {
                     if (name.equals("")) return;
 
@@ -1470,10 +1397,10 @@ public class MainActivity extends AppCompatActivity {
                     vals.put("name", name);
                     try {
                         db.insert("actions", null, vals);
+                    } catch (Exception e) {
                     }
-                    catch (Exception e){}
                 } else if (section.equals("STEP")) {
-                    if (name.equals("") || insertParams==null) return;
+                    if (name.equals("") || insertParams == null) return;
                     if (insertParams.size() == 0) return;
 
                     if (id == -1) {
@@ -1504,8 +1431,8 @@ public class MainActivity extends AppCompatActivity {
                     vals.put("parent_id", -1);  // wird irgendwann kompliziert
                     try {
                         db.insert("steps", null, vals);
+                    } catch (Exception e) {
                     }
-                    catch (Exception e){}
 
                     int pId = -1;
                     c = db.rawQuery("select max(id) from params", null);
@@ -1744,7 +1671,7 @@ public class MainActivity extends AppCompatActivity {
                     final String steps[] = getResources().getStringArray(R.array.builtInSteps);
                     final String names[] = getResources().getStringArray(R.array.builtInStepsNames);
                     TreeMap<String, String> stepMap = new TreeMap<>();
-                    for (i=0; i<steps.length; i++) {
+                    for (i = 0; i < steps.length; i++) {
                         stepMap.put(names[i], steps[i]);
                     }
                     i = 0;
@@ -2252,7 +2179,8 @@ public class MainActivity extends AppCompatActivity {
 
             private EditText createInput(Context context, boolean numericOnly) {
                 EditText input = new EditText(context);
-                if (numericOnly) input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+                if (numericOnly)
+                    input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
                 return input;
             }
 
@@ -2296,29 +2224,29 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     singleInput = null;
                 }
-                showCreateStepWizard(context, title, singleInputMessage, finalDialogStartingAtId, optionList, singleInput, paramIdx==0 ? backFromFirstParam : backFromFurtherParam, cancelWizard,
+                showCreateStepWizard(context, title, singleInputMessage, finalDialogStartingAtId, optionList, singleInput, paramIdx == 0 ? backFromFirstParam : backFromFurtherParam, cancelWizard,
                         new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int id) {
-                                String msg="";
+                                String msg = "";
                                 final int varFlag[] = new int[1];
                                 final int lstFlag[] = new int[1];
-                                boolean showInnerDialog=false;
+                                boolean showInnerDialog = false;
                                 if (selectedId >= 0) {
                                     if (fixedValue || newVariable || newList) {
                                         // eine Optionsliste wurde angeboten
-                                        if (fixedValue && selectedId==0) {
+                                        if (fixedValue && selectedId == 0) {
                                             // "bestimmter Wert" wurde ausgewählt
                                             msg = getString(R.string.inputFixedValue);
                                             varFlag[0] = 0;
                                             lstFlag[0] = 0;
                                             showInnerDialog = true;
-                                        } else if (newVariable && (!fixedValue && selectedId==0 || fixedValue && selectedId==1)) {
+                                        } else if (newVariable && (!fixedValue && selectedId == 0 || fixedValue && selectedId == 1)) {
                                             // "neue Variable" wurde ausgewählt
                                             msg = getString(R.string.inputNewVariable);
                                             varFlag[0] = 1;
                                             lstFlag[0] = 0;
                                             showInnerDialog = true;
-                                        } else if (newList && (!fixedValue && selectedId==0 || fixedValue && selectedId==1)) {
+                                        } else if (newList && (!fixedValue && selectedId == 0 || fixedValue && selectedId == 1)) {
                                             // "neue Liste" wurde ausgewählt
                                             msg = getString(R.string.inputNewList);
                                             varFlag[0] = 0;
@@ -2331,7 +2259,7 @@ public class MainActivity extends AppCompatActivity {
                                         if (showInnerDialog) {
                                             // Eingabedialog für bestimmten Wert bzw. neuen Variablen-/Listennamen zeigen
                                             final EditText input = createInput(context, numericOnly);
-                                            showCreateStepWizard(context, title, msg, finalDialogStartingAtId==-1 ? -1 : 0, null, input, backFromInnerDialog, cancelWizard,
+                                            showCreateStepWizard(context, title, msg, finalDialogStartingAtId == -1 ? -1 : 0, null, input, backFromInnerDialog, cancelWizard,
                                                     new DialogInterface.OnClickListener() {
                                                         public void onClick(DialogInterface dialog, int id) {
                                                             proceedCreateStep(context, params, paramIdx, input.getText().toString().trim(), varFlag[0], lstFlag[0], finalDialogStartingAtId);
@@ -2376,12 +2304,12 @@ public class MainActivity extends AppCompatActivity {
                 if (message != null) builder.setMessage(message);
                 if (optionList != null) {
                     cnt = optionList.length;
-                    selectedId = cnt==1 ? 0 : -1;
+                    selectedId = cnt == 1 ? 0 : -1;
                     builder.setSingleChoiceItems(optionList, selectedId, new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int id) {
                             Button posButton = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
                             posButton.setEnabled(true);
-                            if (finalDialogStartingAtId>=0 && (id>=finalDialogStartingAtId ^ selectedId>=finalDialogStartingAtId)) {
+                            if (finalDialogStartingAtId >= 0 && (id >= finalDialogStartingAtId ^ selectedId >= finalDialogStartingAtId)) {
                                 if (id >= finalDialogStartingAtId)
                                     posButton.setText(getString(R.string.finish));
                                 else
@@ -2393,13 +2321,15 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     builder.setView(inputView);
                 }
-                builder.setPositiveButton(finalDialogStartingAtId==-1 || selectedId==-1 || selectedId<finalDialogStartingAtId ? getString(R.string.next) : getString(R.string.finish), onClickNext);
+                builder.setPositiveButton(finalDialogStartingAtId == -1 || selectedId == -1 || selectedId < finalDialogStartingAtId ? getString(R.string.next) : getString(R.string.finish), onClickNext);
                 builder.setNegativeButton(getString(R.string.cancel), onClickCancel);
-                if (onClickBack != null) builder.setNeutralButton(getString(R.string.back), onClickBack);
+                if (onClickBack != null)
+                    builder.setNeutralButton(getString(R.string.back), onClickBack);
                 dialog = builder.create();
                 dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
                 dialog.show();
-                if (optionList!=null && selectedId==-1) dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+                if (optionList != null && selectedId == -1)
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
             }
         }
     }
