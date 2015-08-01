@@ -23,6 +23,7 @@ import android.text.SpannableStringBuilder;
 import android.text.method.LinkMovementMethod;
 import android.text.style.ClickableSpan;
 import android.text.style.URLSpan;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -47,7 +48,9 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /* ToDo-Liste
-- Debug: selektierten Step nach unten verschieben, dann Selektion sichtbar, in selectedItems aber zwischenzeitlich leer
+- Debug: java.lang.NullPointerException: Attempt to invoke virtual method 'android.view.View android.support.v7.widget.RecyclerView.findChildViewUnder(float, float)' on a null object reference
+  tritt auf, wenn man gleichzeitig longpresst und klickt (kurz nacheinander)
+  vielleicht einen allgemeinen Exception-Ignorierer bauen, den man in den Optionen aufplatschmäßig einschalten kann
 - Hinzufüge-Item durch FAB (floating action button) ersetzen
 - Anlegerei mit Assistent für sämtliche vorgefertigten Schritte
 - Umbenennen per ActionMode
@@ -686,8 +689,8 @@ public class MainActivity extends AppCompatActivity {
             public void onItemMove(int from, int to) {
                 Collections.swap(mDataset, from, to);
                 if (appActionMode != null) {
-                    toggleSelection(from);
-                    toggleSelection(to);
+                    toggleSelection(from, true);
+                    toggleSelection(to, true);
                 }
                 notifyItemMoved(from, to);
             }
@@ -882,8 +885,8 @@ public class MainActivity extends AppCompatActivity {
             public void onItemMove(int from, int to) {
                 Collections.swap(mDataset, from, to);
                 if (appActionMode != null) {
-                    toggleSelection(from);
-                    toggleSelection(to);
+                    toggleSelection(from, true);
+                    toggleSelection(to, true);
                 }
                 notifyItemMoved(from, to);
             }
@@ -1226,6 +1229,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onDestroyActionMode(ActionMode actionMode) {
+                Log.d("DESTROY", Integer.toString(getSelectedItemCount()));
                 clearSelection();
                 appActionMode = null;
             }
@@ -1340,8 +1344,8 @@ public class MainActivity extends AppCompatActivity {
             public void onItemMove(int from, int to) {
                 Collections.swap(mDataset, from, to);
                 if (appActionMode != null) {
-                    toggleSelection(from);
-                    toggleSelection(to);
+                    toggleSelection(from, true);
+                    toggleSelection(to, true);
                 }
                 notifyItemMoved(from, to);
             }
