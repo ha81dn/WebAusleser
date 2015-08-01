@@ -47,8 +47,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /* ToDo-Liste
-- ERL normalen onClick() erweitern um intentUpdate
-- ERL alle Adapter nach Vorbild des SourceAdapter auf neue Drag-Swipe-Kontext-Logik umbauen
+- Debug: selektierten Step nach unten verschieben, dann Selektion sichtbar, in selectedItems aber zwischenzeitlich leer
 - Hinzufüge-Item durch FAB (floating action button) ersetzen
 - Anlegerei mit Assistent für sämtliche vorgefertigten Schritte
 - Umbenennen per ActionMode
@@ -61,6 +60,8 @@ import java.util.TreeMap;
 - Widget entwickeln
 - Import/Export entwickeln
 - ERL Rippelei ordentlich machen
+- ERL normalen onClick() erweitern um intentUpdate
+- ERL alle Adapter nach Vorbild des SourceAdapter auf neue Drag-Swipe-Kontext-Logik umbauen
 
 */
 
@@ -281,6 +282,7 @@ public class MainActivity extends AppCompatActivity {
         private RecyclerView.LayoutManager mLayoutManager;
         private SelectableAdapter mAdapter = null;
         private mainBroadcastReceiver mainBR;
+        private ItemTouchHelper touchHelper;
         private boolean initializationFinished = false;
 
         public PlaceholderFragment() {
@@ -551,12 +553,14 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void toggledSelection(int position) {
-                int count = getSelectedItemCount();
-                if (count == 0) {
-                    appActionMode.finish();
-                } else {
-                    appActionMode.setTitle(String.valueOf(count));
-                    appActionMode.invalidate();
+                if (appActionMode != null) {
+                    int count = getSelectedItemCount();
+                    if (count == 0) {
+                        appActionMode.finish();
+                    } else {
+                        appActionMode.setTitle(String.valueOf(count));
+                        appActionMode.invalidate();
+                    }
                 }
             }
 
@@ -681,6 +685,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemMove(int from, int to) {
                 Collections.swap(mDataset, from, to);
+                if (appActionMode != null) {
+                    toggleSelection(from);
+                    toggleSelection(to);
+                }
                 notifyItemMoved(from, to);
             }
         }
@@ -740,12 +748,14 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void toggledSelection(int position) {
-                int count = getSelectedItemCount();
-                if (count == 0) {
-                    appActionMode.finish();
-                } else {
-                    appActionMode.setTitle(String.valueOf(count));
-                    appActionMode.invalidate();
+                if (appActionMode != null) {
+                    int count = getSelectedItemCount();
+                    if (count == 0) {
+                        appActionMode.finish();
+                    } else {
+                        appActionMode.setTitle(String.valueOf(count));
+                        appActionMode.invalidate();
+                    }
                 }
             }
 
@@ -871,6 +881,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemMove(int from, int to) {
                 Collections.swap(mDataset, from, to);
+                if (appActionMode != null) {
+                    toggleSelection(from);
+                    toggleSelection(to);
+                }
                 notifyItemMoved(from, to);
             }
         }
@@ -979,7 +993,7 @@ public class MainActivity extends AppCompatActivity {
                     Intent intentUpdate = new Intent();
                     intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
                     intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
-                    intentUpdate.putExtra("TAPITEM", "STEP");
+                    intentUpdate.putExtra("TAPITEM", "SOURCE");
                     intentUpdate.putExtra("ID", mDataset.get(position).getId());
                     intentUpdate.putExtra("NAME", mDataset.get(position).getName());
                     getActivity().sendBroadcast(intentUpdate);
@@ -990,12 +1004,14 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void toggledSelection(int position) {
-                int count = getSelectedItemCount();
-                if (count == 0) {
-                    appActionMode.finish();
-                } else {
-                    appActionMode.setTitle(String.valueOf(count));
-                    appActionMode.invalidate();
+                if (appActionMode != null) {
+                    int count = getSelectedItemCount();
+                    if (count == 0) {
+                        appActionMode.finish();
+                    } else {
+                        appActionMode.setTitle(String.valueOf(count));
+                        appActionMode.invalidate();
+                    }
                 }
             }
 
@@ -1177,12 +1193,14 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void toggledSelection(int position) {
-                int count = getSelectedItemCount();
-                if (count == 0) {
-                    appActionMode.finish();
-                } else {
-                    appActionMode.setTitle(String.valueOf(count));
-                    appActionMode.invalidate();
+                if (appActionMode != null) {
+                    int count = getSelectedItemCount();
+                    if (count == 0) {
+                        appActionMode.finish();
+                    } else {
+                        appActionMode.setTitle(String.valueOf(count));
+                        appActionMode.invalidate();
+                    }
                 }
             }
 
@@ -1321,6 +1339,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemMove(int from, int to) {
                 Collections.swap(mDataset, from, to);
+                if (appActionMode != null) {
+                    toggleSelection(from);
+                    toggleSelection(to);
+                }
                 notifyItemMoved(from, to);
             }
         }
@@ -1466,7 +1488,6 @@ public class MainActivity extends AppCompatActivity {
             private void handleTaps(Context context, String section, int id, String name) {
                 SQLiteDatabase db = DatabaseHandler.getInstance(context).getReadableDatabase();
                 Cursor c;
-                ItemTouchHelper touchHelper;
                 ItemTouchHelper.Callback callback;
                 String tmp = null;
 
@@ -1488,6 +1509,7 @@ public class MainActivity extends AppCompatActivity {
 
                     mAdapter = new SourceAdapter(sourceDataset);
                     callback = new ItemTouchHelperCallback((SourceAdapter) mAdapter);
+                    if (touchHelper != null) touchHelper.attachToRecyclerView(null);
                     touchHelper = new ItemTouchHelper(callback);
                     touchHelper.attachToRecyclerView(mRecyclerView);
                     activeSection = "SOURCES";
@@ -1530,6 +1552,7 @@ public class MainActivity extends AppCompatActivity {
 
                         mAdapter = new ActionAdapter(actionDataset);
                         callback = new ItemTouchHelperCallback((ActionAdapter) mAdapter);
+                        if (touchHelper != null) touchHelper.attachToRecyclerView(null);
                         touchHelper = new ItemTouchHelper(callback);
                         touchHelper.attachToRecyclerView(mRecyclerView);
                         activeSection = "ACTIONS";
@@ -1590,6 +1613,7 @@ public class MainActivity extends AppCompatActivity {
 
                         mAdapter = new StepAdapter(stepDataset);
                         callback = new ItemTouchHelperCallback((StepAdapter) mAdapter);
+                        if (touchHelper != null) touchHelper.attachToRecyclerView(null);
                         touchHelper = new ItemTouchHelper(callback);
                         touchHelper.attachToRecyclerView(mRecyclerView);
                         activeSection = "STEPS";
@@ -1618,6 +1642,7 @@ public class MainActivity extends AppCompatActivity {
 
                         mAdapter = new ParamAdapter(paramDataset);
                         callback = new ItemTouchHelperCallback((ParamAdapter) mAdapter);
+                        if (touchHelper != null) touchHelper.attachToRecyclerView(null);
                         touchHelper = new ItemTouchHelper(callback);
                         touchHelper.attachToRecyclerView(mRecyclerView);
                         activeSection = "PARAMS";
