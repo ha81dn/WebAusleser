@@ -1,7 +1,6 @@
 package com.ha81dn.webausleser;
 
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.util.SparseBooleanArray;
 
 import java.util.ArrayList;
@@ -37,11 +36,9 @@ public abstract class SelectableAdapter<VH extends RecyclerView.ViewHolder> exte
      */
     public void toggleSelection(int position) {
         doToggleSelection(position, true);
-        Log.d("TOGGLE", Integer.toString(position));
     }
 
     public void toggleSelection(int position, boolean suppressNotify) {
-        Log.d("MOVE_TOGGLE", Integer.toString(position));
         doToggleSelection(position, !suppressNotify);
     }
 
@@ -55,6 +52,27 @@ public abstract class SelectableAdapter<VH extends RecyclerView.ViewHolder> exte
             notifyItemChanged(position);
             toggledSelection(position);
         }
+    }
+
+    public void reorgAfterMove(int from, int to) {
+        int i;
+        boolean valFrom = selectedItems.get(from, false);
+        if (from < to)
+            for (i = from; i < to; i++)
+                if (selectedItems.get(i + 1, false))
+                    selectedItems.put(i, true);
+                else
+                    selectedItems.delete(i);
+        else
+            for (i = from; i > to; i--)
+                if (selectedItems.get(i - 1, false))
+                    selectedItems.put(i, true);
+                else
+                    selectedItems.delete(i);
+        if (valFrom)
+            selectedItems.put(to, true);
+        else
+            selectedItems.delete(to);
     }
 
     public void toggledSelection(int position) {

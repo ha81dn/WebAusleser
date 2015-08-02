@@ -50,6 +50,7 @@ import java.util.TreeMap;
 
 /* ToDo-Liste
 - Anlegerei mit Assistent für sämtliche vorgefertigten Schritte
+- assistentengestützte Parameter-Wertänderung
 - If- und Schleifen-Schachtelei
 - Umbenennen per ActionMode
 - Kopieren per ActionMode
@@ -709,10 +710,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemMove(int from, int to) {
                 Collections.swap(mDataset, from, to);
-                if (appActionMode != null) {
-                    toggleSelection(from, true);
-                    toggleSelection(to, true);
-                }
+                if (appActionMode != null) reorgAfterMove(from, to);
                 notifyItemMoved(from, to);
             }
         }
@@ -905,10 +903,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemMove(int from, int to) {
                 Collections.swap(mDataset, from, to);
-                if (appActionMode != null) {
-                    toggleSelection(from, true);
-                    toggleSelection(to, true);
-                }
+                if (appActionMode != null) reorgAfterMove(from, to);
                 notifyItemMoved(from, to);
             }
         }
@@ -1364,10 +1359,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemMove(int from, int to) {
                 Collections.swap(mDataset, from, to);
-                if (appActionMode != null) {
-                    toggleSelection(from, true);
-                    toggleSelection(to, true);
-                }
+                if (appActionMode != null) reorgAfterMove(from, to);
                 notifyItemMoved(from, to);
             }
         }
