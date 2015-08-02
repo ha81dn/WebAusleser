@@ -228,34 +228,40 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         if (appActionMode == null) {
-            if (activeSection.equals("SOURCES") || activeSection.equals("FUNCTIONS")) {
-                if (mRecentlyBackPressed) {
-                    if (mExitHandler != null) {
-                        mExitHandler.removeCallbacks(mExitRunnable);
-                        mExitHandler = null;
+            switch (activeSection) {
+                case "SOURCES":
+                case "FUNCTIONS":
+                    if (mRecentlyBackPressed) {
+                        if (mExitHandler != null) {
+                            mExitHandler.removeCallbacks(mExitRunnable);
+                            mExitHandler = null;
+                        }
+                        super.onBackPressed();
+                    } else {
+                        mRecentlyBackPressed = true;
+                        Toast.makeText(this, "zum Beenden ein zweites Mal drücken", Toast.LENGTH_SHORT).show();
+                        mExitHandler.postDelayed(mExitRunnable, delay);
                     }
-                    super.onBackPressed();
-                } else {
-                    mRecentlyBackPressed = true;
-                    Toast.makeText(this, "zum Beenden ein zweites Mal drücken", Toast.LENGTH_SHORT).show();
-                    mExitHandler.postDelayed(mExitRunnable, delay);
-                }
-            } else if (activeSection.equals("ACTIONS")) {
-                if (sourceId == -1) {
-                    displaySection(this, "FUNCTION", -1, null);
-                } else {
-                    displaySection(this, "ROOT", -1, null);
-                    sourceId = -1;
-                    sourceName = null;
-                }
-            } else if (activeSection.equals("STEPS")) {
-                displaySection(this, "SOURCE", sourceId, sourceName);
-                actionId = -1;
-                actionName = null;
-            } else if (activeSection.equals("PARAMS")) {
-                displaySection(this, "ACTION", actionId, actionName);
-                stepId = -1;
-                stepName = null;
+                    break;
+                case "ACTIONS":
+                    if (sourceId == -1) {
+                        displaySection(this, "FUNCTION", -1, null);
+                    } else {
+                        displaySection(this, "ROOT", -1, null);
+                        sourceId = -1;
+                        sourceName = null;
+                    }
+                    break;
+                case "STEPS":
+                    displaySection(this, "SOURCE", sourceId, sourceName);
+                    actionId = -1;
+                    actionName = null;
+                    break;
+                case "PARAMS":
+                    displaySection(this, "ACTION", actionId, actionName);
+                    stepId = -1;
+                    stepName = null;
+                    break;
             }
         } else
             super.onBackPressed();
@@ -357,12 +363,16 @@ public class MainActivity extends AppCompatActivity {
                 public void onClick(View view) {
                     String url = span.getURL();
                     if (url != null) {
-                        if (url.equals("SRC")) {
-                            MainActivity.displaySection(view.getContext(), "SOURCE", sourceId, sourceName);
-                        } else if (url.equals("ACT")) {
-                            MainActivity.displaySection(view.getContext(), "ACTION", actionId, actionName);
-                        } else if (url.equals("STP")) {
-                            MainActivity.displaySection(view.getContext(), "STEP", stepId, stepName);
+                        switch (url) {
+                            case "SRC":
+                                MainActivity.displaySection(view.getContext(), "SOURCE", sourceId, sourceName);
+                                break;
+                            case "ACT":
+                                MainActivity.displaySection(view.getContext(), "ACTION", actionId, actionName);
+                                break;
+                            case "STP":
+                                MainActivity.displaySection(view.getContext(), "STEP", stepId, stepName);
+                                break;
                         }
                     }
                 }
@@ -508,8 +518,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public boolean onLongClick(View v) {
-                if (listener != null) return listener.onItemLongClicked(getAdapterPosition());
-                return false;
+                return listener != null && listener.onItemLongClicked(getAdapterPosition());
             }
         }
 
@@ -1372,6 +1381,7 @@ public class MainActivity extends AppCompatActivity {
                     handleTaps(context, tmp, intent.getIntExtra("ID", -1), intent.getStringExtra("NAME"));
                 else {
                     tmp = intent.getStringExtra("INSERT");
+                    //noinspection StatementWithEmptyBody
                     if (tmp != null)
                         handleInserts(context, tmp, intent.getStringExtra("NAME"), intent.getIntExtra("ID", -1));
                     else {
@@ -1385,115 +1395,124 @@ public class MainActivity extends AppCompatActivity {
                 Cursor c;
                 ContentValues vals = new ContentValues();
 
-                if (section.equals("SOURCE")) {
-                    if (name.equals("")) return;
+                switch (section) {
+                    case "SOURCE":
+                        if (name.equals("")) return;
 
-                    if (id == -1) {
-                        c = db.rawQuery("select max(id) from sources", null);
-                        if (c != null) {
-                            if (c.moveToFirst()) {
-                                id = c.getInt(0) + 1;
+                        if (id == -1) {
+                            c = db.rawQuery("select max(id) from sources", null);
+                            if (c != null) {
+                                if (c.moveToFirst()) {
+                                    id = c.getInt(0) + 1;
+                                }
+                                c.close();
                             }
-                            c.close();
+                            if (id == -1) id = 0;
                         }
-                        if (id == -1) id = 0;
-                    }
 
-                    vals.put("id", id);
-                    vals.put("name", name);
-                    try {
-                        db.insert("sources", null, vals);
-                    } catch (Exception e) {
-                    }
-                } else if (section.equals("ACTION") || section.equals("FUNCTION")) {
-                    if (name.equals("")) return;
-
-                    if (id == -1) {
-                        c = db.rawQuery("select max(id) from actions", null);
-                        if (c != null) {
-                            if (c.moveToFirst()) {
-                                id = c.getInt(0) + 1;
-                            }
-                            c.close();
-                        }
-                        if (id == -1) id = 0;
-                    }
-
-                    int source_id = section.equals("ACTION") ? sourceId : -1;
-                    int sort_nr = -1;
-                    c = db.rawQuery("select max(sort_nr) from actions where source_id = ?", new String[]{Integer.toString(source_id)});
-                    if (c != null) {
-                        if (c.moveToFirst()) {
-                            sort_nr = c.getInt(0);
-                        }
-                        c.close();
-                    }
-
-                    vals.put("id", id);
-                    vals.put("source_id", source_id);
-                    vals.put("sort_nr", ++sort_nr);
-                    vals.put("name", name);
-                    try {
-                        db.insert("actions", null, vals);
-                    } catch (Exception e) {
-                    }
-                } else if (section.equals("STEP")) {
-                    if (name.equals("") || insertParams == null) return;
-                    if (insertParams.size() == 0) return;
-
-                    if (id == -1) {
-                        c = db.rawQuery("select max(id) from steps", null);
-                        if (c != null) {
-                            if (c.moveToFirst()) {
-                                id = c.getInt(0) + 1;
-                            }
-                            c.close();
-                        }
-                        if (id == -1) id = 0;
-                    }
-
-                    int sort_nr = -1;
-                    c = db.rawQuery("select max(sort_nr) from steps where action_id = ?", new String[]{Integer.toString(actionId)});
-                    if (c != null) {
-                        if (c.moveToFirst()) {
-                            sort_nr = c.getInt(0);
-                        }
-                        c.close();
-                    }
-
-                    vals.put("id", id);
-                    vals.put("action_id", actionId);
-                    vals.put("sort_nr", ++sort_nr);
-                    vals.put("function", name);
-                    vals.put("call_flag", 0);   // wird irgendwann natürlich Übergabeparameter
-                    vals.put("parent_id", -1);  // wird irgendwann kompliziert
-                    try {
-                        db.insert("steps", null, vals);
-                    } catch (Exception e) {
-                    }
-
-                    int pId = -1;
-                    c = db.rawQuery("select max(id) from params", null);
-                    if (c != null) {
-                        if (c.moveToFirst()) {
-                            pId = c.getInt(0) + 1;
-                        }
-                        c.close();
-                        if (pId == -1) pId = 0;
-                    }
-
-                    for (Param p : insertParams) {
-                        vals.clear();
-                        vals.put("id", pId++);
-                        vals.put("step_id", id);
-                        vals.put("idx", p.getIdx());
-                        vals.put("value", p.getValue());
-                        vals.put("variable_flag", p.getVariableFlag());
-                        vals.put("list_flag", p.getListFlag());
+                        vals.put("id", id);
+                        vals.put("name", name);
                         try {
-                            db.insert("params", null, vals);
-                        } catch (Exception e) {
+                            db.insert("sources", null, vals);
+                        } catch (Exception ignored) {
                         }
+                        break;
+                    case "ACTION":
+                    case "FUNCTION": {
+                        if (name.equals("")) return;
+
+                        if (id == -1) {
+                            c = db.rawQuery("select max(id) from actions", null);
+                            if (c != null) {
+                                if (c.moveToFirst()) {
+                                    id = c.getInt(0) + 1;
+                                }
+                                c.close();
+                            }
+                            if (id == -1) id = 0;
+                        }
+
+                        int source_id = section.equals("ACTION") ? sourceId : -1;
+                        int sort_nr = -1;
+                        c = db.rawQuery("select max(sort_nr) from actions where source_id = ?", new String[]{Integer.toString(source_id)});
+                        if (c != null) {
+                            if (c.moveToFirst()) {
+                                sort_nr = c.getInt(0);
+                            }
+                            c.close();
+                        }
+
+                        vals.put("id", id);
+                        vals.put("source_id", source_id);
+                        vals.put("sort_nr", ++sort_nr);
+                        vals.put("name", name);
+                        try {
+                            db.insert("actions", null, vals);
+                        } catch (Exception ignored) {
+                        }
+                        break;
+                    }
+                    case "STEP": {
+                        if (name.equals("") || insertParams == null) return;
+                        if (insertParams.size() == 0) return;
+
+                        if (id == -1) {
+                            c = db.rawQuery("select max(id) from steps", null);
+                            if (c != null) {
+                                if (c.moveToFirst()) {
+                                    id = c.getInt(0) + 1;
+                                }
+                                c.close();
+                            }
+                            if (id == -1) id = 0;
+                        }
+
+                        int sort_nr = -1;
+                        c = db.rawQuery("select max(sort_nr) from steps where action_id = ?", new String[]{Integer.toString(actionId)});
+                        if (c != null) {
+                            if (c.moveToFirst()) {
+                                sort_nr = c.getInt(0);
+                            }
+                            c.close();
+                        }
+
+                        vals.put("id", id);
+                        vals.put("action_id", actionId);
+                        vals.put("sort_nr", ++sort_nr);
+                        vals.put("function", name);
+                        vals.put("call_flag", 0);   // wird irgendwann natürlich Übergabeparameter
+
+                        vals.put("parent_id", -1);  // wird irgendwann kompliziert
+
+                        try {
+                            db.insert("steps", null, vals);
+                        } catch (Exception ignored) {
+                        }
+
+                        int pId = -1;
+                        c = db.rawQuery("select max(id) from params", null);
+                        if (c != null) {
+                            if (c.moveToFirst()) {
+                                pId = c.getInt(0) + 1;
+                            }
+                            c.close();
+                            if (pId == -1) pId = 0;
+                        }
+
+                        for (Param p : insertParams) {
+                            vals.clear();
+                            vals.put("id", pId++);
+                            vals.put("step_id", id);
+                            vals.put("idx", p.getIdx());
+                            vals.put("value", p.getValue());
+                            vals.put("variable_flag", p.getVariableFlag());
+                            vals.put("list_flag", p.getListFlag());
+                            try {
+                                db.insert("params", null, vals);
+                            } catch (Exception ignored) {
+                            }
+                        }
+                        break;
                     }
                 }
                 db.close();
@@ -1505,168 +1524,173 @@ public class MainActivity extends AppCompatActivity {
                 SQLiteDatabase db = DatabaseHandler.getInstance(context).getReadableDatabase();
                 Cursor c;
                 ItemTouchHelper.Callback callback;
-                String tmp = null;
+                String tmp;
 
-                if (section.equals("ROOT")) {
-                    ArrayList<Source> sourceDataset = new ArrayList<>();
-
-                    db = DatabaseHandler.getInstance(context).getReadableDatabase();
-                    c = db.rawQuery("select id, name from sources order by name", null);
-                    if (c != null) {
-                        if (c.moveToFirst()) {
-                            do {
-                                sourceDataset.add(new Source(c.getInt(0), c.getString(1)));
-                            } while (c.moveToNext());
-                        }
-                        c.close();
-                    }
-                    db.close();
-
-                    mAdapter = new SourceAdapter(sourceDataset);
-                    callback = new ItemTouchHelperCallback((SourceAdapter) mAdapter);
-                    if (touchHelper != null) touchHelper.attachToRecyclerView(null);
-                    touchHelper = new ItemTouchHelper(callback);
-                    touchHelper.attachToRecyclerView(mRecyclerView);
-                    activeSection = "SOURCES";
-                    navTitle.setText(getString(R.string.navTitleSources));
-                    fab.show();
-                } else if (section.equals("SOURCE")) {
-                    if (id == -1) {
-                        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-                        builder.setTitle(getString(R.string.newSource));
-                        builder.setMessage(getString(R.string.inputName));
-                        final EditText input = new EditText(context);
-                        builder.setView(input);
-                        builder.setPositiveButton(getString(R.string.ok),
-                                new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int id) {
-                                        MainActivity.insertRow(getActivity(), "SOURCE", input.getText().toString().trim(), -1);
-                                    }
-                                });
-                        builder.setNegativeButton(getString(R.string.cancel),
-                                new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int id) {
-                                    }
-                                });
-                        AlertDialog dialog = builder.create();
-                        dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
-                        dialog.show();
-                    } else {
-                        ArrayList<Action> actionDataset = new ArrayList<>();
-
-                        c = db.rawQuery("select id, source_id, sort_nr, name from actions where source_id = ? order by sort_nr", new String[]{Integer.toString(id)});
-                        if (c != null) {
-                            if (c.moveToFirst()) {
-                                do {
-                                    actionDataset.add(new Action(c.getInt(0), c.getInt(1), c.getInt(2), c.getString(3)));
-                                } while (c.moveToNext());
-                            }
-                            c.close();
-                        }
-                        db.close();
-
-                        mAdapter = new ActionAdapter(actionDataset);
-                        callback = new ItemTouchHelperCallback((ActionAdapter) mAdapter);
-                        if (touchHelper != null) touchHelper.attachToRecyclerView(null);
-                        touchHelper = new ItemTouchHelper(callback);
-                        touchHelper.attachToRecyclerView(mRecyclerView);
-                        activeSection = "ACTIONS";
-                        sourceId = id;
-                        sourceName = name;
-                        navTitle.setText(getString(R.string.actionsFor, sourceName));
-                        fab.show();
-                    }
-                } else if (section.equals("ACTION")) {
-                    if (id == -1) {
-                        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-                        builder.setTitle(getString(R.string.newAction));
-                        builder.setMessage(getString(R.string.inputName));
-                        final EditText input = new EditText(context);
-                        builder.setView(input);
-                        builder.setPositiveButton(getString(R.string.ok),
-                                new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int id) {
-                                        MainActivity.insertRow(getActivity(), "ACTION", input.getText().toString().trim(), -1);
-                                    }
-                                });
-                        builder.setNegativeButton(getString(R.string.cancel),
-                                new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int id) {
-                                    }
-                                });
-                        AlertDialog dialog = builder.create();
-                        dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
-                        dialog.show();
-                    } else {
-                        ArrayList<Step> stepDataset = new ArrayList<>();
-
-                        Cursor cF;
+                switch (section) {
+                    case "ROOT":
+                        ArrayList<Source> sourceDataset = new ArrayList<>();
 
                         db = DatabaseHandler.getInstance(context).getReadableDatabase();
-                        c = db.rawQuery("select id, action_id, sort_nr, function, call_flag, parent_id from steps where parent_id = -1 and action_id = ? order by sort_nr", new String[]{Integer.toString(id)});
+                        c = db.rawQuery("select id, name from sources order by name", null);
                         if (c != null) {
                             if (c.moveToFirst()) {
                                 do {
-                                    String function = c.getString(3);
-                                    int flag = c.getInt(4);
-                                    if (flag == 1) {
-                                        cF = db.rawQuery("select name from actions where action_id = ?", new String[]{function});
-                                        tmp = "ERROR_FUNCTION_MISSING";
-                                        if (cF != null) {
-                                            if (cF.moveToFirst()) {
-                                                tmp = cF.getString(0);
-                                            }
-                                            cF.close();
-                                        }
-                                    } else tmp = function;
-                                    stepDataset.add(new Step(c.getInt(0), c.getInt(1), c.getInt(2), function, tmp, flag, c.getInt(5)));
+                                    sourceDataset.add(new Source(c.getInt(0), c.getString(1)));
                                 } while (c.moveToNext());
                             }
                             c.close();
                         }
                         db.close();
 
-                        mAdapter = new StepAdapter(stepDataset);
-                        callback = new ItemTouchHelperCallback((StepAdapter) mAdapter);
+                        mAdapter = new SourceAdapter(sourceDataset);
+                        callback = new ItemTouchHelperCallback((SourceAdapter) mAdapter);
                         if (touchHelper != null) touchHelper.attachToRecyclerView(null);
                         touchHelper = new ItemTouchHelper(callback);
                         touchHelper.attachToRecyclerView(mRecyclerView);
-                        activeSection = "STEPS";
-                        actionId = id;
-                        actionName = name;
-                        setTextViewHTML(navTitle, getString(R.string.stepsFor, actionName) + " (<a href='SRC'>" + sourceName + "</a>)");
+                        activeSection = "SOURCES";
+                        navTitle.setText(getString(R.string.navTitleSources));
                         fab.show();
-                    }
-                } else if (section.equals("STEP")) {
-                    if (id == -1) {
-                        stepId = -1;
-                        stepName = "";
-                        createStep(new ArrayList<Param>());
-                    } else {
-                        ArrayList<Param> paramDataset = new ArrayList<>();
+                        break;
+                    case "SOURCE":
+                        if (id == -1) {
+                            AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                            builder.setTitle(getString(R.string.newSource));
+                            builder.setMessage(getString(R.string.inputName));
+                            final EditText input = new EditText(context);
+                            builder.setView(input);
+                            builder.setPositiveButton(getString(R.string.ok),
+                                    new DialogInterface.OnClickListener() {
+                                        public void onClick(DialogInterface dialog, int id) {
+                                            MainActivity.insertRow(getActivity(), "SOURCE", input.getText().toString().trim(), -1);
+                                        }
+                                    });
+                            builder.setNegativeButton(getString(R.string.cancel),
+                                    new DialogInterface.OnClickListener() {
+                                        public void onClick(DialogInterface dialog, int id) {
+                                        }
+                                    });
+                            AlertDialog dialog = builder.create();
+                            dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                            dialog.show();
+                        } else {
+                            ArrayList<Action> actionDataset = new ArrayList<>();
 
-                        c = db.rawQuery("select id, step_id, idx, value, variable_flag, list_flag from params where step_id = ? order by idx", new String[]{Integer.toString(id)});
-                        if (c != null) {
-                            if (c.moveToFirst()) {
-                                do {
-                                    paramDataset.add(new Param(c.getInt(0), c.getInt(1), c.getInt(2), c.getString(3), c.getInt(4), c.getInt(5)));
-                                } while (c.moveToNext());
+                            c = db.rawQuery("select id, source_id, sort_nr, name from actions where source_id = ? order by sort_nr", new String[]{Integer.toString(id)});
+                            if (c != null) {
+                                if (c.moveToFirst()) {
+                                    do {
+                                        actionDataset.add(new Action(c.getInt(0), c.getInt(1), c.getInt(2), c.getString(3)));
+                                    } while (c.moveToNext());
+                                }
+                                c.close();
                             }
-                            c.close();
-                        }
-                        db.close();
+                            db.close();
 
-                        mAdapter = new ParamAdapter(paramDataset);
-                        callback = new ItemTouchHelperCallback((ParamAdapter) mAdapter);
-                        if (touchHelper != null) touchHelper.attachToRecyclerView(null);
-                        touchHelper = new ItemTouchHelper(callback);
-                        touchHelper.attachToRecyclerView(mRecyclerView);
-                        activeSection = "PARAMS";
-                        stepId = id;
-                        stepName = name;
-                        setTextViewHTML(navTitle, getString(R.string.paramsFor, stepName) + " (<a href='SRC'>" + sourceName + "</a> / <a href='ACT'>" + actionName + "</a>)");
-                        fab.hide();
-                    }
+                            mAdapter = new ActionAdapter(actionDataset);
+                            callback = new ItemTouchHelperCallback((ActionAdapter) mAdapter);
+                            if (touchHelper != null) touchHelper.attachToRecyclerView(null);
+                            touchHelper = new ItemTouchHelper(callback);
+                            touchHelper.attachToRecyclerView(mRecyclerView);
+                            activeSection = "ACTIONS";
+                            sourceId = id;
+                            sourceName = name;
+                            navTitle.setText(getString(R.string.actionsFor, sourceName));
+                            fab.show();
+                        }
+                        break;
+                    case "ACTION":
+                        if (id == -1) {
+                            AlertDialog.Builder builder = new AlertDialog.Builder(context);
+                            builder.setTitle(getString(R.string.newAction));
+                            builder.setMessage(getString(R.string.inputName));
+                            final EditText input = new EditText(context);
+                            builder.setView(input);
+                            builder.setPositiveButton(getString(R.string.ok),
+                                    new DialogInterface.OnClickListener() {
+                                        public void onClick(DialogInterface dialog, int id) {
+                                            MainActivity.insertRow(getActivity(), "ACTION", input.getText().toString().trim(), -1);
+                                        }
+                                    });
+                            builder.setNegativeButton(getString(R.string.cancel),
+                                    new DialogInterface.OnClickListener() {
+                                        public void onClick(DialogInterface dialog, int id) {
+                                        }
+                                    });
+                            AlertDialog dialog = builder.create();
+                            dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                            dialog.show();
+                        } else {
+                            ArrayList<Step> stepDataset = new ArrayList<>();
+
+                            Cursor cF;
+
+                            db = DatabaseHandler.getInstance(context).getReadableDatabase();
+                            c = db.rawQuery("select id, action_id, sort_nr, function, call_flag, parent_id from steps where parent_id = -1 and action_id = ? order by sort_nr", new String[]{Integer.toString(id)});
+                            if (c != null) {
+                                if (c.moveToFirst()) {
+                                    do {
+                                        String function = c.getString(3);
+                                        int flag = c.getInt(4);
+                                        if (flag == 1) {
+                                            cF = db.rawQuery("select name from actions where action_id = ?", new String[]{function});
+                                            tmp = "ERROR_FUNCTION_MISSING";
+                                            if (cF != null) {
+                                                if (cF.moveToFirst()) {
+                                                    tmp = cF.getString(0);
+                                                }
+                                                cF.close();
+                                            }
+                                        } else tmp = function;
+                                        stepDataset.add(new Step(c.getInt(0), c.getInt(1), c.getInt(2), function, tmp, flag, c.getInt(5)));
+                                    } while (c.moveToNext());
+                                }
+                                c.close();
+                            }
+                            db.close();
+
+                            mAdapter = new StepAdapter(stepDataset);
+                            callback = new ItemTouchHelperCallback((StepAdapter) mAdapter);
+                            if (touchHelper != null) touchHelper.attachToRecyclerView(null);
+                            touchHelper = new ItemTouchHelper(callback);
+                            touchHelper.attachToRecyclerView(mRecyclerView);
+                            activeSection = "STEPS";
+                            actionId = id;
+                            actionName = name;
+                            setTextViewHTML(navTitle, getString(R.string.stepsFor, actionName) + " (<a href='SRC'>" + sourceName + "</a>)");
+                            fab.show();
+                        }
+                        break;
+                    case "STEP":
+                        if (id == -1) {
+                            stepId = -1;
+                            stepName = "";
+                            createStep(new ArrayList<Param>());
+                        } else {
+                            ArrayList<Param> paramDataset = new ArrayList<>();
+
+                            c = db.rawQuery("select id, step_id, idx, value, variable_flag, list_flag from params where step_id = ? order by idx", new String[]{Integer.toString(id)});
+                            if (c != null) {
+                                if (c.moveToFirst()) {
+                                    do {
+                                        paramDataset.add(new Param(c.getInt(0), c.getInt(1), c.getInt(2), c.getString(3), c.getInt(4), c.getInt(5)));
+                                    } while (c.moveToNext());
+                                }
+                                c.close();
+                            }
+                            db.close();
+
+                            mAdapter = new ParamAdapter(paramDataset);
+                            callback = new ItemTouchHelperCallback((ParamAdapter) mAdapter);
+                            if (touchHelper != null) touchHelper.attachToRecyclerView(null);
+                            touchHelper = new ItemTouchHelper(callback);
+                            touchHelper.attachToRecyclerView(mRecyclerView);
+                            activeSection = "PARAMS";
+                            stepId = id;
+                            stepName = name;
+                            setTextViewHTML(navTitle, getString(R.string.paramsFor, stepName) + " (<a href='SRC'>" + sourceName + "</a> / <a href='ACT'>" + actionName + "</a>)");
+                            fab.hide();
+                        }
+                        break;
                 }
 
                 if (mAdapter != null) mRecyclerView.setAdapter(mAdapter);
@@ -1675,8 +1699,6 @@ public class MainActivity extends AppCompatActivity {
             private void createStep(final ArrayList<Param> params) {
                 final Context context = getActivity();
                 final SQLiteDatabase db = DatabaseHandler.getInstance(context).getReadableDatabase();
-                AlertDialog.Builder builder;
-                AlertDialog dialog;
                 int i;
 
                 DialogInterface.OnClickListener backFromFirstParam = new DialogInterface.OnClickListener() {
