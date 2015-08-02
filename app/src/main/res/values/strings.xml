@@ -142,7 +142,7 @@
         <item>len</item>
         <item>instrrev</item>
         <item>httpget</item>
-        <item>httpput</item>
+        <item>httppost</item>
         <item>execjs</item>
         <item>makemsg</item>
         <item>reverse</item>
@@ -179,7 +179,7 @@
         <item>Länge (Quelle, Ziel)</item>
         <item>Rückwärtssuche (Quelle, Startposition, Suchtext, Ziel)</item>
         <item>Get-Download (URL, Modus, Ziel)</item>
-        <item>Put-Download (URL, Modus, Ziel)</item>
+        <item>Post-Download (URL, Modus, Ziel)</item>
         <item>Javascript-Befehl (Befehl, Ziel)</item>
         <item>Meldung (Betreff, Inhalt, Bild, Link)</item>
         <item>Text spiegeln (Quelle, Ziel)</item>

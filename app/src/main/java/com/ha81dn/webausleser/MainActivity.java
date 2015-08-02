@@ -11,6 +11,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.Handler;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.view.ActionMode;
@@ -48,23 +49,23 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /* ToDo-Liste
-- Debug: java.lang.NullPointerException: Attempt to invoke virtual method 'android.view.View android.support.v7.widget.RecyclerView.findChildViewUnder(float, float)' on a null object reference
-  tritt auf, wenn man gleichzeitig longpresst und klickt (kurz nacheinander)
-  vielleicht einen allgemeinen Exception-Ignorierer bauen, den man in den Optionen aufplatschmäßig einschalten kann
-- Hinzufüge-Item durch FAB (floating action button) ersetzen
 - Anlegerei mit Assistent für sämtliche vorgefertigten Schritte
+- If- und Schleifen-Schachtelei
 - Umbenennen per ActionMode
 - Kopieren per ActionMode
 - Aktion zur Funktion umwandeln
 - Kopfzeile ausbauen (mehrzeilig, Zusatzinfos)
 - Tabs für Fragment-Wechsel zu Funktionen, Einstellungen und Testcenter
 - Absturzbehandlung wie beim MioKlicker, nur mit eigener Activity statt Tabpage
+  dazu allgemeinen Exception-Ignorierer bauen (vgl. Uniface), den man in den Optionen aber dann doch
+  aufplatschmäßig einschalten kann (also als Popup-Exception mit Fehlerbericht-Senden-Option)
 - Testcenter entwickeln
 - Widget entwickeln
 - Import/Export entwickeln
 - ERL Rippelei ordentlich machen
 - ERL normalen onClick() erweitern um intentUpdate
 - ERL alle Adapter nach Vorbild des SourceAdapter auf neue Drag-Swipe-Kontext-Logik umbauen
+- ERL Hinzufüge-Item durch FAB (floating action button) ersetzen
 
 */
 
@@ -241,7 +242,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             } else if (activeSection.equals("ACTIONS")) {
                 if (sourceId == -1) {
-                    displaySection(this, "FUNCTIONS", -1, null);
+                    displaySection(this, "FUNCTION", -1, null);
                 } else {
                     displaySection(this, "ROOT", -1, null);
                     sourceId = -1;
@@ -275,6 +276,15 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    public void fabOnClick(View v) {
+        Intent intentUpdate = new Intent();
+        intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
+        intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
+        intentUpdate.putExtra("TAPITEM", activeSection.substring(0, activeSection.length() - 1));
+        intentUpdate.putExtra("ID", -1);
+        v.getContext().sendBroadcast(intentUpdate);
+    }
+
     /**
      * A placeholder fragment containing a simple view.
      */
@@ -282,6 +292,7 @@ public class MainActivity extends AppCompatActivity {
 
         static TextView navTitle;
         static RecyclerView mRecyclerView;
+        static FloatingActionButton fab;
         private RecyclerView.LayoutManager mLayoutManager;
         private SelectableAdapter mAdapter = null;
         private mainBroadcastReceiver mainBR;
@@ -325,6 +336,7 @@ public class MainActivity extends AppCompatActivity {
 
             View rootView = inflater.inflate(R.layout.fragment_main, container, false);
             navTitle = (TextView) rootView.findViewById(R.id.main_title);
+            fab = (FloatingActionButton) rootView.findViewById(R.id.fab);
             mRecyclerView = (RecyclerView) rootView.findViewById(R.id.main_recycler);
             // use this setting to improve performance if you know that changes
             // in content do not change the layout size of the RecyclerView
@@ -1509,7 +1521,6 @@ public class MainActivity extends AppCompatActivity {
                         c.close();
                     }
                     db.close();
-                    sourceDataset.add(new Source(-1, getString(R.string.addSource)));
 
                     mAdapter = new SourceAdapter(sourceDataset);
                     callback = new ItemTouchHelperCallback((SourceAdapter) mAdapter);
@@ -1518,6 +1529,7 @@ public class MainActivity extends AppCompatActivity {
                     touchHelper.attachToRecyclerView(mRecyclerView);
                     activeSection = "SOURCES";
                     navTitle.setText(getString(R.string.navTitleSources));
+                    fab.show();
                 } else if (section.equals("SOURCE")) {
                     if (id == -1) {
                         AlertDialog.Builder builder = new AlertDialog.Builder(context);
@@ -1552,7 +1564,6 @@ public class MainActivity extends AppCompatActivity {
                             c.close();
                         }
                         db.close();
-                        actionDataset.add(new Action(-1, -1, -1, getString(R.string.addAction)));
 
                         mAdapter = new ActionAdapter(actionDataset);
                         callback = new ItemTouchHelperCallback((ActionAdapter) mAdapter);
@@ -1563,6 +1574,7 @@ public class MainActivity extends AppCompatActivity {
                         sourceId = id;
                         sourceName = name;
                         navTitle.setText(getString(R.string.actionsFor, sourceName));
+                        fab.show();
                     }
                 } else if (section.equals("ACTION")) {
                     if (id == -1) {
@@ -1613,7 +1625,6 @@ public class MainActivity extends AppCompatActivity {
                             c.close();
                         }
                         db.close();
-                        stepDataset.add(new Step(-1, -1, -1, null, getString(R.string.addStep), -1, -1));
 
                         mAdapter = new StepAdapter(stepDataset);
                         callback = new ItemTouchHelperCallback((StepAdapter) mAdapter);
@@ -1624,6 +1635,7 @@ public class MainActivity extends AppCompatActivity {
                         actionId = id;
                         actionName = name;
                         setTextViewHTML(navTitle, getString(R.string.stepsFor, actionName) + " (<a href='SRC'>" + sourceName + "</a>)");
+                        fab.show();
                     }
                 } else if (section.equals("STEP")) {
                     if (id == -1) {
@@ -1653,6 +1665,7 @@ public class MainActivity extends AppCompatActivity {
                         stepId = id;
                         stepName = name;
                         setTextViewHTML(navTitle, getString(R.string.paramsFor, stepName) + " (<a href='SRC'>" + sourceName + "</a> / <a href='ACT'>" + actionName + "</a>)");
+                        fab.hide();
                     }
                 }
 
