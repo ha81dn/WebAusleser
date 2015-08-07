@@ -13,9 +13,13 @@
     <string name="addAction">Aktion hinzufügen&#8230;</string>
     <string name="addStep">Schritt hinzufügen&#8230;</string>
     <string name="newFunction">Funktion hinzufügen</string>
+    <string name="renameFunction">Funktion umbenennen</string>
     <string name="newSource">Quelle hinzufügen</string>
+    <string name="renameSource">Quelle umbenennen</string>
     <string name="newAction">Aktion hinzufügen</string>
+    <string name="renameAction">Aktion umbenennen</string>
     <string name="newStep">Schritt hinzufügen</string>
+    <string name="renameStep">Schritt umbenennen</string>
     <string name="newParameter">"Parameter für %1$s"</string>
     <string name="newVariable">(neue Variable)</string>
     <string name="newList">(neue Liste)</string>

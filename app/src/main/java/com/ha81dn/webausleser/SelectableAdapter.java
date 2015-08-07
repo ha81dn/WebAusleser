@@ -54,6 +54,12 @@ public abstract class SelectableAdapter<VH extends RecyclerView.ViewHolder> exte
         }
     }
 
+    public void selectAll(int size) {
+        for (int i = 0; i < size; i++) {
+            if (selectedItems.indexOfKey(i) < 0) toggleSelection(i);
+        }
+    }
+
     public void reorgAfterMove(int from, int to) {
         int i;
         boolean valFrom = selectedItems.get(from, false);

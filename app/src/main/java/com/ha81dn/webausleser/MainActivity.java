@@ -49,7 +49,6 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /* ToDo-Liste
-- Umbenennen per ActionMode (synchron)
 - aussagekräftiges Elementlayout inkl. Bezeichnungen von Kindern
 - Parent-/Child-Bezeichnungsaktualisierungen nach Umbenennen
 - Ausschneiden und Kopieren per ActionMode: synchron per Assistent, bisheriger Pfad vorausgewählt,
@@ -72,6 +71,7 @@ import java.util.TreeMap;
 - ERL normalen onClick() erweitern um intentUpdate
 - ERL alle Adapter nach Vorbild des SourceAdapter auf neue Drag-Swipe-Kontext-Logik umbauen
 - ERL Hinzufüge-Item durch FAB (floating action button) ersetzen
+- ERL Umbenennen per ActionMode (synchron)
 
 */
 
@@ -530,6 +530,7 @@ public class MainActivity extends AppCompatActivity {
 
         private class ActionAdapter extends SelectableAdapter<ViewHolder> implements ItemTouchHelperAdapter, ClickListener, ActionMode.Callback {
             public ArrayList<Action> mDataset;
+            private Menu menu;
 
             // Provide a suitable constructor (depends on the kind of dataset)
             public ActionAdapter(ArrayList<Action> myDataset) {
@@ -588,6 +589,14 @@ public class MainActivity extends AppCompatActivity {
                     if (count == 0) {
                         appActionMode.finish();
                     } else {
+                        if (count >= 2)
+                            menu.findItem(R.id.menu_item_rename).setEnabled(false);
+                        else
+                            menu.findItem(R.id.menu_item_rename).setEnabled(true);
+                        if (count == mDataset.size())
+                            menu.findItem(R.id.menu_item_select_all).setEnabled(false);
+                        else
+                            menu.findItem(R.id.menu_item_select_all).setEnabled(true);
                         appActionMode.setTitle(String.valueOf(count));
                         appActionMode.invalidate();
                     }
@@ -606,6 +615,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
                 getActivity().getMenuInflater().inflate(R.menu.list_item_context, menu);
+                this.menu = menu;
                 return true;
             }
 
@@ -618,12 +628,59 @@ public class MainActivity extends AppCompatActivity {
             public void onDestroyActionMode(ActionMode actionMode) {
                 clearSelection();
                 appActionMode = null;
+                menu = null;
             }
 
             @Override
             public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
                 if (getSelectedItemCount() == 0) return false;
+                AlertDialog.Builder builder;
+                final Context context = getActivity();
+
                 switch (menuItem.getItemId()) {
+                    case R.id.menu_item_rename:
+                        builder = new AlertDialog.Builder(context);
+                        builder.setTitle(getString(R.string.renameAction));
+                        builder.setMessage(getString(R.string.inputName));
+                        final EditText input = new EditText(context);
+                        builder.setView(input);
+                        final int pos = getSelectedItems().get(0);
+                        final Action a = mDataset.get(pos);
+                        input.setText(a.getName());
+                        input.setSelectAllOnFocus(true);
+                        builder.setPositiveButton(getString(R.string.ok),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
+                                        Cursor c;
+                                        String name = input.getText().toString().trim();
+
+                                        c = db.rawQuery("update actions set name = ? where id = ?", new String[]{name, Integer.toString(a.getId())});
+                                        if (c != null) {
+                                            c.moveToFirst();
+                                            c.close();
+                                            a.setName(name);
+                                            notifyItemChanged(pos);
+                                        }
+                                    }
+                                });
+                        builder.setNegativeButton(getString(R.string.cancel),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                    }
+                                });
+                        AlertDialog dialog = builder.create();
+                        dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                        dialog.show();
+
+                        actionMode.finish();
+                        return true;
+
+                    case R.id.menu_item_select_all:
+                        selectAll(mDataset.size());
+
+                        return true;
+
                     case R.id.menu_item_delete:
                         DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
                             @Override
@@ -631,7 +688,7 @@ public class MainActivity extends AppCompatActivity {
                                 switch (which) {
                                     case DialogInterface.BUTTON_POSITIVE:
                                         //Yes button clicked
-                                        SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
+                                        SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
                                         Cursor c;
 
                                         List<Integer> items = getSelectedItems();
@@ -656,7 +713,7 @@ public class MainActivity extends AppCompatActivity {
                             }
                         };
 
-                        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                        builder = new AlertDialog.Builder(context);
                         builder.setMessage(getString(R.string.sureActions))
                                 .setPositiveButton(getString(R.string.yes), dialogClickListener)
                                 .setNegativeButton(getString(R.string.no), dialogClickListener).show();
@@ -722,6 +779,7 @@ public class MainActivity extends AppCompatActivity {
 
         private class FunctionAdapter extends SelectableAdapter<ViewHolder> implements ItemTouchHelperAdapter, ClickListener, ActionMode.Callback {
             public ArrayList<Action> mDataset;
+            private Menu menu;
 
             // Provide a suitable constructor (depends on the kind of dataset)
             public FunctionAdapter(ArrayList<Action> myDataset) {
@@ -780,6 +838,10 @@ public class MainActivity extends AppCompatActivity {
                     if (count == 0) {
                         appActionMode.finish();
                     } else {
+                        if (count >= 2)
+                            menu.findItem(R.id.menu_item_rename).setEnabled(false);
+                        else
+                            menu.findItem(R.id.menu_item_rename).setEnabled(true);
                         appActionMode.setTitle(String.valueOf(count));
                         appActionMode.invalidate();
                     }
@@ -798,6 +860,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
                 getActivity().getMenuInflater().inflate(R.menu.list_item_context, menu);
+                menu.findItem(R.id.menu_item_move).setVisible(false);
+                this.menu = menu;
                 return true;
             }
 
@@ -810,6 +874,7 @@ public class MainActivity extends AppCompatActivity {
             public void onDestroyActionMode(ActionMode actionMode) {
                 clearSelection();
                 appActionMode = null;
+                menu = null;
             }
 
             @Override
@@ -948,15 +1013,13 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onItemClicked(int position) {
-                if (appActionMode == null) {
-                    Intent intentUpdate = new Intent();
-                    intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
-                    intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
-                    intentUpdate.putExtra("TAPITEM", "PARAM");
-                    intentUpdate.putExtra("ID", mDataset.get(position).getId());
-                    intentUpdate.putExtra("NAME", mDataset.get(position).getValue());
-                    getActivity().sendBroadcast(intentUpdate);
-                }
+                Intent intentUpdate = new Intent();
+                intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
+                intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
+                intentUpdate.putExtra("TAPITEM", "PARAM");
+                intentUpdate.putExtra("ID", mDataset.get(position).getId());
+                intentUpdate.putExtra("NAME", mDataset.get(position).getValue());
+                getActivity().sendBroadcast(intentUpdate);
             }
 
             @Override
@@ -1038,6 +1101,10 @@ public class MainActivity extends AppCompatActivity {
                             menu.findItem(R.id.menu_item_rename).setEnabled(false);
                         else
                             menu.findItem(R.id.menu_item_rename).setEnabled(true);
+                        if (count == mDataset.size())
+                            menu.findItem(R.id.menu_item_select_all).setEnabled(false);
+                        else
+                            menu.findItem(R.id.menu_item_select_all).setEnabled(true);
                         appActionMode.setTitle(String.valueOf(count));
                         appActionMode.invalidate();
                     }
@@ -1076,7 +1143,53 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
                 if (getSelectedItemCount() == 0) return false;
+                AlertDialog.Builder builder;
+                final Context context = getActivity();
+
                 switch (menuItem.getItemId()) {
+                    case R.id.menu_item_rename:
+                        builder = new AlertDialog.Builder(context);
+                        builder.setTitle(getString(R.string.renameSource));
+                        builder.setMessage(getString(R.string.inputName));
+                        final EditText input = new EditText(context);
+                        builder.setView(input);
+                        final int pos = getSelectedItems().get(0);
+                        final Source s = mDataset.get(pos);
+                        input.setText(s.getName());
+                        input.setSelectAllOnFocus(true);
+                        builder.setPositiveButton(getString(R.string.ok),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
+                                        Cursor c;
+                                        String name = input.getText().toString().trim();
+
+                                        c = db.rawQuery("update sources set name = ? where id = ?", new String[]{name, Integer.toString(s.getId())});
+                                        if (c != null) {
+                                            c.moveToFirst();
+                                            c.close();
+                                            s.setName(name);
+                                            notifyItemChanged(pos);
+                                        }
+                                    }
+                                });
+                        builder.setNegativeButton(getString(R.string.cancel),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                    }
+                                });
+                        AlertDialog dialog = builder.create();
+                        dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                        dialog.show();
+
+                        actionMode.finish();
+                        return true;
+
+                    case R.id.menu_item_select_all:
+                        selectAll(mDataset.size());
+
+                        return true;
+
                     case R.id.menu_item_delete:
                         DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
                             @Override
@@ -1084,7 +1197,7 @@ public class MainActivity extends AppCompatActivity {
                                 switch (which) {
                                     case DialogInterface.BUTTON_POSITIVE:
                                         //Yes button clicked
-                                        SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
+                                        SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
                                         Cursor c;
 
                                         List<Integer> items = getSelectedItems();
@@ -1109,7 +1222,7 @@ public class MainActivity extends AppCompatActivity {
                             }
                         };
 
-                        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                        builder = new AlertDialog.Builder(context);
                         builder.setMessage(getString(R.string.sureSources))
                                 .setPositiveButton(getString(R.string.yes), dialogClickListener)
                                 .setNegativeButton(getString(R.string.no), dialogClickListener).show();
@@ -1172,6 +1285,7 @@ public class MainActivity extends AppCompatActivity {
 
         private class StepAdapter extends SelectableAdapter<ViewHolder> implements ItemTouchHelperAdapter, ClickListener, ActionMode.Callback {
             public ArrayList<Step> mDataset;
+            private Menu menu;
 
             // Provide a suitable constructor (depends on the kind of dataset)
             public StepAdapter(ArrayList<Step> myDataset) {
@@ -1248,6 +1362,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
                 getActivity().getMenuInflater().inflate(R.menu.list_item_context, menu);
+                menu.findItem(R.id.menu_item_rename).setVisible(false);
+                this.menu = menu;
                 return true;
             }
 
@@ -1261,6 +1377,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.d("DESTROY", Integer.toString(getSelectedItemCount()));
                 clearSelection();
                 appActionMode = null;
+                menu = null;
             }
 
             @Override
