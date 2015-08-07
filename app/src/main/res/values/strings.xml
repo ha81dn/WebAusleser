@@ -32,8 +32,10 @@
     <string name="yes">Ja</string>
     <string name="no">Nein</string>
     <string name="delete">Löschen</string>
-    <string name="up">Nach oben verschieben</string>
-    <string name="down">Nach unten verschieben</string>
+    <string name="rename">Umbenennen</string>
+    <string name="move">Verschieben</string>
+    <string name="copy">Kopieren</string>
+    <string name="selectAll">Alles markieren</string>
     <string name="sureFunction">"Möchten Sie die Funktion '%1$s' inklusive deren Schritte wirklich unwiderruflich löschen?"</string>
     <string name="sureFunctions">"Möchten Sie die ausgewählten Funktionen inklusive deren Schritte wirklich unwiderruflich löschen?"</string>
     <string name="sureSource">"Möchten Sie die Quelle '%1$s' inklusive deren Aktionen wirklich unwiderruflich löschen?"</string>

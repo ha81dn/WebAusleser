@@ -49,13 +49,18 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /* ToDo-Liste
-- Anlegerei mit Assistent für sämtliche vorgefertigten Schritte
-- assistentengestützte Parameter-Wertänderung
+- Umbenennen per ActionMode (synchron)
+- aussagekräftiges Elementlayout inkl. Bezeichnungen von Kindern
+- Parent-/Child-Bezeichnungsaktualisierungen nach Umbenennen
+- Ausschneiden und Kopieren per ActionMode: synchron per Assistent, bisheriger Pfad vorausgewählt,
+  letzter Assi-Schritt mit Buttons "davor einfügen", "danach einfügen"
 - If- und Schleifen-Schachtelei
-- Umbenennen per ActionMode
-- Kopieren per ActionMode
+- assistentengestützte Parameter-Wertänderung
+- Schritt-Assistent mit Kategorien (Zeichenfolgenfunktionen, Ablaufsteuerung ...)
+- Anlegerei mit Assistent für sämtliche vorgefertigten Schritte
 - Aktion zur Funktion umwandeln
 - Kopfzeile ausbauen (mehrzeilig, Zusatzinfos)
+- Datenbankmodell für Jobs und Meldungen
 - Tabs für Fragment-Wechsel zu Funktionen, Einstellungen und Testcenter
 - Absturzbehandlung wie beim MioKlicker, nur mit eigener Activity statt Tabpage
   dazu allgemeinen Exception-Ignorierer bauen (vgl. Uniface), den man in den Optionen aber dann doch
@@ -970,6 +975,7 @@ public class MainActivity extends AppCompatActivity {
 
         private class SourceAdapter extends SelectableAdapter<ViewHolder> implements ItemTouchHelperAdapter, ClickListener, ActionMode.Callback {
             public ArrayList<Source> mDataset;
+            private Menu menu;
 
             // Provide a suitable constructor (depends on the kind of dataset)
             public SourceAdapter(ArrayList<Source> myDataset) {
@@ -1028,6 +1034,10 @@ public class MainActivity extends AppCompatActivity {
                     if (count == 0) {
                         appActionMode.finish();
                     } else {
+                        if (count >= 2)
+                            menu.findItem(R.id.menu_item_rename).setEnabled(false);
+                        else
+                            menu.findItem(R.id.menu_item_rename).setEnabled(true);
                         appActionMode.setTitle(String.valueOf(count));
                         appActionMode.invalidate();
                     }
@@ -1046,6 +1056,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onCreateActionMode(ActionMode actionMode, Menu menu) {
                 getActivity().getMenuInflater().inflate(R.menu.list_item_context, menu);
+                menu.findItem(R.id.menu_item_move).setVisible(false);
+                this.menu = menu;
                 return true;
             }
 
@@ -1058,6 +1070,7 @@ public class MainActivity extends AppCompatActivity {
             public void onDestroyActionMode(ActionMode actionMode) {
                 clearSelection();
                 appActionMode = null;
+                menu = null;
             }
 
             @Override
