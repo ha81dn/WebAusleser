@@ -49,18 +49,19 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /* ToDo-Liste
-- aussagekräftiges Elementlayout inkl. Bezeichnungen von Kindern
-- Parent-/Child-Bezeichnungsaktualisierungen nach Umbenennen
-- Ausschneiden und Kopieren per ActionMode: synchron per Assistent, bisheriger Pfad vorausgewählt,
+- Verschieben und Kopieren per ActionMode: synchron per Assistent, bisheriger Pfad vorausgewählt,
   letzter Assi-Schritt mit Buttons "davor einfügen", "danach einfügen"
 - If- und Schleifen-Schachtelei
 - assistentengestützte Parameter-Wertänderung
 - Schritt-Assistent mit Kategorien (Zeichenfolgenfunktionen, Ablaufsteuerung ...)
 - Anlegerei mit Assistent für sämtliche vorgefertigten Schritte
-- Aktion zur Funktion umwandeln
+- Aktion zur Funktion umwandeln (als Option beim Verschieben und Kopieren)
 - Kopfzeile ausbauen (mehrzeilig, Zusatzinfos)
 - Datenbankmodell für Jobs und Meldungen
 - Tabs für Fragment-Wechsel zu Funktionen, Einstellungen und Testcenter
+- Hintergrund beim Swipen andersfarbig
+- Cursor andersfarbig, weil schlecht zu erkennen
+- aussagekräftiges Elementlayout inkl. Bezeichnungen von Kindern
 - Absturzbehandlung wie beim MioKlicker, nur mit eigener Activity statt Tabpage
   dazu allgemeinen Exception-Ignorierer bauen (vgl. Uniface), den man in den Optionen aber dann doch
   aufplatschmäßig einschalten kann (also als Popup-Exception mit Fehlerbericht-Senden-Option)
@@ -398,6 +399,73 @@ public class MainActivity extends AppCompatActivity {
             text.setMovementMethod(LinkMovementMethod.getInstance());
         }
 
+        protected void copyRecord(final boolean moveFlag,
+                                  final Context context,
+                                  final ArrayList datasetFrom,
+                                  final List<Integer> idsFrom,
+                                  final String tableFrom,
+                                  final int idShow,
+                                  final String tableShow,
+                                  final int idPathFunction,
+                                  final int idPathSource,
+                                  final int idPathAction,
+                                  final int idPathStep) {
+            AlertDialog.Builder builder;
+            if (tableShow == null) {
+                switch (tableFrom) {
+                    case "sources":
+                        if (idsFrom.size() == 1) {
+                            builder = new AlertDialog.Builder(context);
+                            builder.setTitle(getString(R.string.copySource));
+                            builder.setMessage(getString(R.string.inputName));
+                            final EditText input = new EditText(context);
+                            builder.setView(input);
+                            final int pos = idsFrom.get(0);
+                            final Source s = (Source) datasetFrom.get(pos);
+                            input.setText(getString(R.string.itemCopy, new String[]{s.getName()}));
+                            input.setSelectAllOnFocus(true);
+                            builder.setPositiveButton(getString(R.string.ok),
+                                    new DialogInterface.OnClickListener() {
+                                        public void onClick(DialogInterface dialog, int id) {
+                                            SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
+                                            Cursor c;
+                                            String name = input.getText().toString().trim();
+                                            int insertId = DatabaseHandler.getNewId(db, "steps");
+
+                                            c = db.rawQuery("insert into sources (id, name) select ?, name from sources where id = ?", new String[]{Integer.toString(insertId), name});
+                                            if (c != null) {
+                                                c.moveToFirst();
+                                                c.close();
+                                                s.setName(name);
+
+                                                // ToDo: den ganzen abhängigen Tabellenkram nachziehen (insert into actions ...)
+
+                                                // ToDo: über TAPITEM sich irgendwie zu der ganzen Geschichte hinbewegen
+                                                // der LayoutManager kann scrollToPositionWithOffset
+                                                // da kann man ja vertikal zentrieren, wenn man ein bisschen rumrechnet
+
+                                            }
+                                            appActionMode.finish();
+                                        }
+                                    });
+                            builder.setNegativeButton(getString(R.string.cancel),
+                                    new DialogInterface.OnClickListener() {
+                                        public void onClick(DialogInterface dialog, int id) {
+                                            appActionMode.finish();
+                                        }
+                                    });
+                            AlertDialog dialog = builder.create();
+                            dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                            dialog.show();
+                        }
+
+
+                }
+            } else {
+
+            }
+        }
+
         private interface ClickListener {
             void onItemClicked(int position);
 
@@ -632,7 +700,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
+            public boolean onActionItemClicked(final ActionMode actionMode, MenuItem menuItem) {
                 if (getSelectedItemCount() == 0) return false;
                 AlertDialog.Builder builder;
                 final Context context = getActivity();
@@ -662,18 +730,19 @@ public class MainActivity extends AppCompatActivity {
                                             a.setName(name);
                                             notifyItemChanged(pos);
                                         }
+                                        actionMode.finish();
                                     }
                                 });
                         builder.setNegativeButton(getString(R.string.cancel),
                                 new DialogInterface.OnClickListener() {
                                     public void onClick(DialogInterface dialog, int id) {
+                                        actionMode.finish();
                                     }
                                 });
                         AlertDialog dialog = builder.create();
                         dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
                         dialog.show();
 
-                        actionMode.finish();
                         return true;
 
                     case R.id.menu_item_select_all:
@@ -710,6 +779,7 @@ public class MainActivity extends AppCompatActivity {
                                         //No button clicked
                                         break;
                                 }
+                                actionMode.finish();
                             }
                         };
 
@@ -718,7 +788,6 @@ public class MainActivity extends AppCompatActivity {
                                 .setPositiveButton(getString(R.string.yes), dialogClickListener)
                                 .setNegativeButton(getString(R.string.no), dialogClickListener).show();
 
-                        actionMode.finish();
                         return true;
                     default:
                         break;
@@ -878,9 +947,55 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
+            public boolean onActionItemClicked(final ActionMode actionMode, MenuItem menuItem) {
                 if (getSelectedItemCount() == 0) return false;
+                AlertDialog.Builder builder;
+                final Context context = getActivity();
+
                 switch (menuItem.getItemId()) {
+                    case R.id.menu_item_rename:
+                        builder = new AlertDialog.Builder(context);
+                        builder.setTitle(getString(R.string.renameFunction));
+                        builder.setMessage(getString(R.string.inputName));
+                        final EditText input = new EditText(context);
+                        builder.setView(input);
+                        final int pos = getSelectedItems().get(0);
+                        final Action a = mDataset.get(pos);
+                        input.setText(a.getName());
+                        input.setSelectAllOnFocus(true);
+                        builder.setPositiveButton(getString(R.string.ok),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
+                                        Cursor c;
+                                        String name = input.getText().toString().trim();
+
+                                        c = db.rawQuery("update actions set name = ? where id = ?", new String[]{name, Integer.toString(a.getId())});
+                                        if (c != null) {
+                                            c.moveToFirst();
+                                            c.close();
+                                            a.setName(name);
+                                            notifyItemChanged(pos);
+                                        }
+                                        actionMode.finish();
+                                    }
+                                });
+                        builder.setNegativeButton(getString(R.string.cancel),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        actionMode.finish();
+                                    }
+                                });
+                        AlertDialog dialog = builder.create();
+                        dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                        dialog.show();
+
+                        return true;
+
+                    case R.id.menu_item_select_all:
+                        selectAll(mDataset.size());
+
+                        return true;
                     case R.id.menu_item_delete:
                         DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
                             @Override
@@ -888,7 +1003,7 @@ public class MainActivity extends AppCompatActivity {
                                 switch (which) {
                                     case DialogInterface.BUTTON_POSITIVE:
                                         //Yes button clicked
-                                        SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
+                                        SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
                                         Cursor c;
 
                                         List<Integer> items = getSelectedItems();
@@ -910,15 +1025,15 @@ public class MainActivity extends AppCompatActivity {
                                         //No button clicked
                                         break;
                                 }
+                                actionMode.finish();
                             }
                         };
 
-                        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+                        builder = new AlertDialog.Builder(context);
                         builder.setMessage(getString(R.string.sureFunctions))
                                 .setPositiveButton(getString(R.string.yes), dialogClickListener)
                                 .setNegativeButton(getString(R.string.no), dialogClickListener).show();
 
-                        actionMode.finish();
                         return true;
                     default:
                         break;
@@ -1141,7 +1256,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
+            public boolean onActionItemClicked(final ActionMode actionMode, MenuItem menuItem) {
                 if (getSelectedItemCount() == 0) return false;
                 AlertDialog.Builder builder;
                 final Context context = getActivity();
@@ -1171,18 +1286,19 @@ public class MainActivity extends AppCompatActivity {
                                             s.setName(name);
                                             notifyItemChanged(pos);
                                         }
+                                        actionMode.finish();
                                     }
                                 });
                         builder.setNegativeButton(getString(R.string.cancel),
                                 new DialogInterface.OnClickListener() {
                                     public void onClick(DialogInterface dialog, int id) {
+                                        actionMode.finish();
                                     }
                                 });
                         AlertDialog dialog = builder.create();
                         dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
                         dialog.show();
 
-                        actionMode.finish();
                         return true;
 
                     case R.id.menu_item_select_all:
@@ -1219,6 +1335,7 @@ public class MainActivity extends AppCompatActivity {
                                         //No button clicked
                                         break;
                                 }
+                                actionMode.finish();
                             }
                         };
 
@@ -1227,7 +1344,6 @@ public class MainActivity extends AppCompatActivity {
                                 .setPositiveButton(getString(R.string.yes), dialogClickListener)
                                 .setNegativeButton(getString(R.string.no), dialogClickListener).show();
 
-                        actionMode.finish();
                         return true;
                     default:
                         break;
@@ -1280,6 +1396,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onItemMove(int from, int to) {
+                // muss die Methode implementieren, darf aber nicht verschoben werden
             }
         }
 
@@ -1381,9 +1498,13 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
+            public boolean onActionItemClicked(final ActionMode actionMode, MenuItem menuItem) {
                 if (getSelectedItemCount() == 0) return false;
                 switch (menuItem.getItemId()) {
+                    case R.id.menu_item_select_all:
+                        selectAll(mDataset.size());
+
+                        return true;
                     case R.id.menu_item_delete:
                         DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
                             @Override
@@ -1413,6 +1534,7 @@ public class MainActivity extends AppCompatActivity {
                                         //No button clicked
                                         break;
                                 }
+                                actionMode.finish();
                             }
                         };
 
@@ -1421,7 +1543,6 @@ public class MainActivity extends AppCompatActivity {
                                 .setPositiveButton(getString(R.string.yes), dialogClickListener)
                                 .setNegativeButton(getString(R.string.no), dialogClickListener).show();
 
-                        actionMode.finish();
                         return true;
                     default:
                         break;

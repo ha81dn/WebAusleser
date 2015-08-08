@@ -8,18 +8,21 @@
     <string name="actionsFor">Aktionen für %1$s</string>
     <string name="stepsFor">Schritte für %1$s</string>
     <string name="paramsFor">Parameter für %1$s</string>
-    <string name="addFunction">Funktion hinzufügen&#8230;</string>
-    <string name="addSource">Quelle hinzufügen&#8230;</string>
-    <string name="addAction">Aktion hinzufügen&#8230;</string>
-    <string name="addStep">Schritt hinzufügen&#8230;</string>
     <string name="newFunction">Funktion hinzufügen</string>
     <string name="renameFunction">Funktion umbenennen</string>
+    <string name="copyFunction">Funktion kopieren</string>
     <string name="newSource">Quelle hinzufügen</string>
     <string name="renameSource">Quelle umbenennen</string>
+    <string name="copySource">Quelle kopieren</string>
+    <string name="itemCopy">%1$s - Kopie</string>
     <string name="newAction">Aktion hinzufügen</string>
     <string name="renameAction">Aktion umbenennen</string>
+    <string name="moveAction">Aktion verschieben</string>
+    <string name="copyAction">Aktion kopieren</string>
     <string name="newStep">Schritt hinzufügen</string>
     <string name="renameStep">Schritt umbenennen</string>
+    <string name="copyStep">Schritt kopieren</string>
+    <string name="moveStep">Schritt verschieben</string>
     <string name="newParameter">"Parameter für %1$s"</string>
     <string name="newVariable">(neue Variable)</string>
     <string name="newList">(neue Liste)</string>
@@ -45,7 +48,7 @@
     <string name="sureSource">"Möchten Sie die Quelle '%1$s' inklusive deren Aktionen wirklich unwiderruflich löschen?"</string>
     <string name="sureSources">"Möchten Sie die ausgewählten Quellen inklusive deren Aktionen wirklich unwiderruflich löschen?"</string>
     <string name="sureAction">"Möchten Sie die Aktion '%1$s' inklusive deren Schritte wirklich unwiderruflich löschen?"</string>
-    <string name="sureActions">"Möchten Sie die ausgewählten Aktion inklusive deren Schritte wirklich unwiderruflich löschen?"</string>
+    <string name="sureActions">"Möchten Sie die ausgewählten Aktionen inklusive deren Schritte wirklich unwiderruflich löschen?"</string>
     <string name="sureStep">"Möchten Sie den Schritt '%1$s' wirklich unwiderruflich löschen?"</string>
     <string name="sureSteps">"Möchten Sie die ausgewählten Schritte wirklich unwiderruflich löschen?"</string>
 
