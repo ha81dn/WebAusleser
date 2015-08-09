@@ -53,6 +53,8 @@ import java.util.TreeMap;
 - Verschieben und Kopieren per ActionMode: synchron per Assistent, bisheriger Pfad vorausgewählt,
   letzter Assi-Schritt mit Buttons "davor einfügen", "danach einfügen"
 - If- und Schleifen-Schachtelei
+- Anlegen von Quellen/Aktionen: bei Namensgleichheit meckern
+- Zeilennummern bei sortierten Adaptern
 - assistentengestützte Parameter-Wertänderung
 - Schritt-Assistent mit Kategorien (Zeichenfolgenfunktionen, Ablaufsteuerung ...)
 - Anlegerei mit Assistent für sämtliche vorgefertigten Schritte
@@ -425,8 +427,11 @@ public class MainActivity extends AppCompatActivity {
                                   final int idPathSource,
                                   final int idPathAction,
                                   final int idPathStep) {
+            final MainActivity activity = (MainActivity) getActivity();
+            final SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
             AlertDialog.Builder builder;
             if (tableShow == null) {
+                // ggf. erster Assistentenschritt
                 switch (tableFrom) {
                     case "sources":
                         if (idsFrom.size() == 1) {
@@ -437,16 +442,14 @@ public class MainActivity extends AppCompatActivity {
                             builder.setView(input);
                             final int pos = idsFrom.get(0);
                             final Source s = (Source) datasetFrom.get(pos);
-                            input.setText(getString(R.string.itemCopy, new String[]{s.getName()}));
+                            input.setText(DatabaseHandler.getUniqueCopiedSourceName(activity, db, s.getName()));
                             input.setSelectAllOnFocus(true);
                             builder.setPositiveButton(getString(R.string.ok),
                                     new DialogInterface.OnClickListener() {
                                         public void onClick(DialogInterface dialog, int id) {
                                             int newSourceId = -1;
-                                            MainActivity activity = (MainActivity) getActivity();
                                             activity.progressWheel.setVisible(true);
                                             try {
-                                                SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
                                                 Cursor cA, cS, cP;
                                                 ContentValues vals = new ContentValues();
                                                 String name = input.getText().toString().trim();
@@ -539,11 +542,21 @@ public class MainActivity extends AppCompatActivity {
                             AlertDialog dialog = builder.create();
                             dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
                             dialog.show();
+                        } else {
+                            // Todo: mehrere Quellen wurden zum Kopieren ausgewählt
                         }
+                        break;
+                    case "actions":
 
+                        break;
+                    case "steps":
 
+                        break;
+                    default:
+                        break;
                 }
             } else {
+                // nächster Assistentenschritt
 
             }
         }

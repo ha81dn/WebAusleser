@@ -15,6 +15,7 @@
     <string name="renameSource">Quelle umbenennen</string>
     <string name="copySource">Quelle kopieren</string>
     <string name="itemCopy">%1$s - Kopie</string>
+    <string name="itemNextCopy">%1$s - Kopie (%2$s)</string>
     <string name="newAction">Aktion hinzufügen</string>
     <string name="renameAction">Aktion umbenennen</string>
     <string name="moveAction">Aktion verschieben</string>
