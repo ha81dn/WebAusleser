@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.Fragment;
+import android.support.v4.view.MenuItemCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.view.ActionMode;
 import android.support.v7.widget.LinearLayoutManager;
@@ -84,6 +85,7 @@ public class MainActivity extends AppCompatActivity {
     static int sourceId, actionId, stepId, selectedId;
     static ActionMode appActionMode = null;
     static ArrayList<Param> insertParams;
+    protected MenuItem progressWheel;
     private boolean mRecentlyBackPressed = false;
     private Handler mExitHandler = new Handler();
     private Runnable mExitRunnable = new Runnable() {
@@ -92,6 +94,17 @@ public class MainActivity extends AppCompatActivity {
             mRecentlyBackPressed = false;
         }
     };
+
+    static void displaySection(Context context, String section, int id, String name, int focusId) {
+        Intent intentUpdate = new Intent();
+        intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
+        intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
+        intentUpdate.putExtra("TAPITEM", section);
+        intentUpdate.putExtra("ID", id);
+        intentUpdate.putExtra("NAME", name);
+        intentUpdate.putExtra("FOCUS", focusId);
+        context.sendBroadcast(intentUpdate);
+    }
 
     static void displaySection(Context context, String section, int id, String name) {
         Intent intentUpdate = new Intent();
@@ -229,6 +242,8 @@ public class MainActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
+        progressWheel = menu.findItem(R.id.action_progress);
+        MenuItemCompat.getActionView(progressWheel);
         return true;
     }
 
@@ -427,25 +442,92 @@ public class MainActivity extends AppCompatActivity {
                             builder.setPositiveButton(getString(R.string.ok),
                                     new DialogInterface.OnClickListener() {
                                         public void onClick(DialogInterface dialog, int id) {
-                                            SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
-                                            Cursor c;
-                                            String name = input.getText().toString().trim();
-                                            int insertId = DatabaseHandler.getNewId(db, "steps");
+                                            int newSourceId = -1;
+                                            MainActivity activity = (MainActivity) getActivity();
+                                            activity.progressWheel.setVisible(true);
+                                            try {
+                                                SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
+                                                Cursor cA, cS, cP;
+                                                ContentValues vals = new ContentValues();
+                                                String name = input.getText().toString().trim();
+                                                newSourceId = DatabaseHandler.getNewId(db, "sources");
 
-                                            c = db.rawQuery("insert into sources (id, name) select ?, name from sources where id = ?", new String[]{Integer.toString(insertId), name});
-                                            if (c != null) {
-                                                c.moveToFirst();
-                                                c.close();
-                                                s.setName(name);
+                                                vals.put("id", newSourceId);
+                                                vals.put("name", name);
+                                                try {
+                                                    db.insert("sources", null, vals);
+                                                } catch (Exception ignored) {
+                                                }
 
-                                                // ToDo: den ganzen abhängigen Tabellenkram nachziehen (insert into actions ...)
+                                                // den ganzen abhängigen Tabellenkram nachziehen (insert into actions ...)
+                                                cA = db.rawQuery("select id, sort_nr, name from actions where source_id = ?", new String[]{Integer.toString(s.getId())});
+                                                if (cA != null) {
+                                                    if (cA.moveToFirst()) {
+                                                        do {
+                                                            int newActionId = DatabaseHandler.getNewId(db, "actions");
+                                                            vals.clear();
+                                                            vals.put("id", newActionId);
+                                                            vals.put("source_id", newSourceId);
+                                                            vals.put("sort_nr", cA.getInt(1));
+                                                            vals.put("name", cA.getString(2));
+                                                            try {
+                                                                db.insert("actions", null, vals);
+                                                            } catch (Exception ignored) {
+                                                            }
 
-                                                // ToDo: über TAPITEM sich irgendwie zu der ganzen Geschichte hinbewegen
-                                                // der LayoutManager kann scrollToPositionWithOffset
-                                                // da kann man ja vertikal zentrieren, wenn man ein bisschen rumrechnet
+                                                            cS = db.rawQuery("select id, sort_nr, function, call_flag, parent_id from steps where action_id = ?", new String[]{Integer.toString(cA.getInt(0))});
+                                                            if (cS != null) {
+                                                                if (cS.moveToFirst()) {
+                                                                    do {
+                                                                        int newStepId = DatabaseHandler.getNewId(db, "steps");
+                                                                        vals.clear();
+                                                                        vals.put("id", newStepId);
+                                                                        vals.put("action_id", newActionId);
+                                                                        vals.put("sort_nr", cS.getInt(1));
+                                                                        vals.put("function", cS.getString(2));
+                                                                        vals.put("call_flag", cS.getInt(3));
+                                                                        vals.put("parent_id", cS.getInt(4));
+                                                                        try {
+                                                                            db.insert("steps", null, vals);
+                                                                        } catch (Exception ignored) {
+                                                                        }
 
+                                                                        cP = db.rawQuery("select id, idx, value, variable_flag, list_flag from params where step_id = ?", new String[]{Integer.toString(cS.getInt(0))});
+                                                                        if (cP != null) {
+                                                                            if (cP.moveToFirst()) {
+                                                                                do {
+                                                                                    int newParamId = DatabaseHandler.getNewId(db, "params");
+                                                                                    vals.clear();
+                                                                                    vals.put("id", newParamId);
+                                                                                    vals.put("step_id", newStepId);
+                                                                                    vals.put("idx", cP.getInt(1));
+                                                                                    vals.put("value", cP.getString(2));
+                                                                                    vals.put("variable_flag", cP.getInt(3));
+                                                                                    vals.put("list_flag", cP.getInt(4));
+                                                                                    try {
+                                                                                        db.insert("params", null, vals);
+                                                                                    } catch (Exception ignored) {
+                                                                                    }
+                                                                                }
+                                                                                while (cP.moveToNext());
+                                                                            }
+                                                                            cP.close();
+                                                                        }
+                                                                    } while (cS.moveToNext());
+                                                                }
+                                                                cS.close();
+                                                            }
+                                                        } while (cA.moveToNext());
+                                                    }
+                                                    cA.close();
+                                                }
+
+                                            } catch (Exception ignored) {
                                             }
+                                            activity.progressWheel.setVisible(false);
                                             appActionMode.finish();
+                                            if (newSourceId >= 0)
+                                                displaySection(activity, "ROOT", -1, null, newSourceId);
                                         }
                                     });
                             builder.setNegativeButton(getString(R.string.cancel),
@@ -1306,6 +1388,11 @@ public class MainActivity extends AppCompatActivity {
 
                         return true;
 
+                    case R.id.menu_item_copy:
+                        copyRecord(false, context, mDataset, getSelectedItems(), "sources", -1, null, -1, -1, -1, -1);
+
+                        return true;
+
                     case R.id.menu_item_delete:
                         DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
                             @Override
@@ -1461,6 +1548,10 @@ public class MainActivity extends AppCompatActivity {
                     if (count == 0) {
                         appActionMode.finish();
                     } else {
+                        if (count == mDataset.size())
+                            menu.findItem(R.id.menu_item_select_all).setEnabled(false);
+                        else
+                            menu.findItem(R.id.menu_item_select_all).setEnabled(true);
                         appActionMode.setTitle(String.valueOf(count));
                         appActionMode.invalidate();
                     }
@@ -1621,7 +1712,7 @@ public class MainActivity extends AppCompatActivity {
             public void onReceive(Context context, Intent intent) {
                 String tmp = intent.getStringExtra("TAPITEM");
                 if (tmp != null)
-                    handleTaps(context, tmp, intent.getIntExtra("ID", -1), intent.getStringExtra("NAME"));
+                    handleTaps(context, tmp, intent.getIntExtra("ID", -1), intent.getStringExtra("NAME"), intent.getIntExtra("FOCUS", -1));
                 else {
                     tmp = intent.getStringExtra("INSERT");
                     //noinspection StatementWithEmptyBody
@@ -1763,11 +1854,12 @@ public class MainActivity extends AppCompatActivity {
                 displaySection(context, section, id, name);
             }
 
-            private void handleTaps(Context context, String section, int id, String name) {
+            private void handleTaps(Context context, String section, int id, String name, int focusId) {
                 SQLiteDatabase db = DatabaseHandler.getInstance(context).getReadableDatabase();
                 Cursor c;
                 ItemTouchHelper.Callback callback;
                 String tmp;
+                int pKey, focusPos = -1;
 
                 switch (section) {
                     case "ROOT":
@@ -1778,7 +1870,9 @@ public class MainActivity extends AppCompatActivity {
                         if (c != null) {
                             if (c.moveToFirst()) {
                                 do {
-                                    sourceDataset.add(new Source(c.getInt(0), c.getString(1)));
+                                    pKey = c.getInt(0);
+                                    if (pKey == focusId) focusPos = sourceDataset.size();
+                                    sourceDataset.add(new Source(pKey, c.getString(1)));
                                 } while (c.moveToNext());
                             }
                             c.close();
@@ -1822,7 +1916,9 @@ public class MainActivity extends AppCompatActivity {
                             if (c != null) {
                                 if (c.moveToFirst()) {
                                     do {
-                                        actionDataset.add(new Action(c.getInt(0), c.getInt(1), c.getInt(2), c.getString(3)));
+                                        pKey = c.getInt(0);
+                                        if (pKey == focusId) focusPos = actionDataset.size();
+                                        actionDataset.add(new Action(pKey, c.getInt(1), c.getInt(2), c.getString(3)));
                                     } while (c.moveToNext());
                                 }
                                 c.close();
@@ -1872,6 +1968,8 @@ public class MainActivity extends AppCompatActivity {
                             if (c != null) {
                                 if (c.moveToFirst()) {
                                     do {
+                                        pKey = c.getInt(0);
+                                        if (pKey == focusId) focusPos = stepDataset.size();
                                         String function = c.getString(3);
                                         int flag = c.getInt(4);
                                         if (flag == 1) {
@@ -1884,7 +1982,7 @@ public class MainActivity extends AppCompatActivity {
                                                 cF.close();
                                             }
                                         } else tmp = function;
-                                        stepDataset.add(new Step(c.getInt(0), c.getInt(1), c.getInt(2), function, tmp, flag, c.getInt(5)));
+                                        stepDataset.add(new Step(pKey, c.getInt(1), c.getInt(2), function, tmp, flag, c.getInt(5)));
                                     } while (c.moveToNext());
                                 }
                                 c.close();
@@ -1936,7 +2034,10 @@ public class MainActivity extends AppCompatActivity {
                         break;
                 }
 
-                if (mAdapter != null) mRecyclerView.setAdapter(mAdapter);
+                if (mAdapter != null) {
+                    mRecyclerView.setAdapter(mAdapter);
+                    if (focusPos >= 0) mLayoutManager.scrollToPosition(focusPos);
+                }
             }
 
             private void createStep(final ArrayList<Param> params) {
