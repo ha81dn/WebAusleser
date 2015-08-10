@@ -438,6 +438,7 @@ public class MainActivity extends AppCompatActivity {
                 switch (tableFrom) {
                     case "sources":
                         if (idsFrom.size() == 1) {
+                            // eine Quelle wurde zum Kopieren ausgewählt
                             builder = new AlertDialog.Builder(context);
                             builder.setTitle(getString(R.string.copySource));
                             builder.setMessage(getString(R.string.inputName));
@@ -453,7 +454,7 @@ public class MainActivity extends AppCompatActivity {
                                             int newSourceId = DatabaseHandler.getNewId(db, "sources");
                                             activity.progressWheel.setVisible(true);
                                             try {
-                                                copySource(db, s.getId(), newSourceId, input.getText().toString().trim());
+                                                copySource(db, s.getId(), newSourceId, DatabaseHandler.getUniqueCopiedSourceName(activity, db, input.getText().toString().trim()));
                                             } catch (Exception ignored) {
                                             }
                                             activity.progressWheel.setVisible(false);
@@ -471,14 +472,13 @@ public class MainActivity extends AppCompatActivity {
                             dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
                             dialog.show();
                         } else {
-                            // Todo: mehrere Quellen wurden zum Kopieren ausgewählt
+                            // mehrere Quellen wurden zum Kopieren ausgewählt
                             Source s;
                             int newSourceId = -1;
                             activity.progressWheel.setVisible(true);
                             for (int pos : idsFrom) {
                                 s = (Source) datasetFrom.get(pos);
                                 newSourceId = DatabaseHandler.getNewId(db, "sources");
-                                activity.progressWheel.setVisible(true);
                                 try {
                                     copySource(db, s.getId(), newSourceId, DatabaseHandler.getUniqueCopiedSourceName(activity, db, s.getName()));
                                 } catch (Exception ignored) {
