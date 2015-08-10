@@ -42,6 +42,7 @@ import com.ha81dn.webausleser.backend.tables.Action;
 import com.ha81dn.webausleser.backend.tables.Param;
 import com.ha81dn.webausleser.backend.tables.Source;
 import com.ha81dn.webausleser.backend.tables.Step;
+import com.ha81dn.webausleser.backend.tables.UniqueRecord;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -50,7 +51,6 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /* ToDo-Liste
-- Debug: Löschen debuggen, da kommen die Adapter-Indizes durcheinander!!!
 - Verschieben und Kopieren per ActionMode: synchron per Assistent, bisheriger Pfad vorausgewählt,
   letzter Assi-Schritt mit Buttons "davor einfügen", "danach einfügen"
 - Verschieben und Kopieren asynchron mit ProgressBar-Popup
@@ -78,6 +78,7 @@ import java.util.TreeMap;
 - ERL alle Adapter nach Vorbild des SourceAdapter auf neue Drag-Swipe-Kontext-Logik umbauen
 - ERL Hinzufüge-Item durch FAB (floating action button) ersetzen
 - ERL Umbenennen per ActionMode (synchron)
+- ERL Löschen debuggen, da kommen die Adapter-Indizes durcheinander!!!
 
 */
 
@@ -578,6 +579,13 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        private ArrayList<UniqueRecord> getRecordsFromSelection(ArrayList dataset, List<Integer> items) {
+            ArrayList<UniqueRecord> lst = new ArrayList<>(items.size());
+            for (int i : items)
+                lst.add((UniqueRecord) dataset.get(i));
+            return lst;
+        }
+
         private interface ClickListener {
             void onItemClicked(int position);
 
@@ -872,15 +880,16 @@ public class MainActivity extends AppCompatActivity {
                                         SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
                                         Cursor c;
 
-                                        List<Integer> items = getSelectedItems();
-                                        for (int i = items.size() - 1; i >= 0; i--) {
-                                            c = db.rawQuery("delete from actions where id = ?", new String[]{Integer.toString(mDataset.get(items.get(i)).getId())});
+                                        ArrayList<UniqueRecord> items = getRecordsFromSelection(mDataset, getSelectedItems());
+                                        for (UniqueRecord ur : items) {
+                                            c = db.rawQuery("delete from actions where id = ?", new String[]{Integer.toString(ur.getId())});
                                             if (c != null) {
                                                 c.moveToFirst();
                                                 c.close();
                                             }
-                                            mDataset.remove(i);
                                         }
+                                        // noinspection SuspiciousMethodCalls
+                                        mDataset.removeAll(items);
 
                                         db.close();
 
@@ -1118,15 +1127,16 @@ public class MainActivity extends AppCompatActivity {
                                         SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
                                         Cursor c;
 
-                                        List<Integer> items = getSelectedItems();
-                                        for (int i = items.size() - 1; i >= 0; i--) {
-                                            c = db.rawQuery("delete from actions where id = ?", new String[]{Integer.toString(mDataset.get(items.get(i)).getId())});
+                                        ArrayList<UniqueRecord> items = getRecordsFromSelection(mDataset, getSelectedItems());
+                                        for (UniqueRecord ur : items) {
+                                            c = db.rawQuery("delete from actions where id = ?", new String[]{Integer.toString(ur.getId())});
                                             if (c != null) {
                                                 c.moveToFirst();
                                                 c.close();
                                             }
-                                            mDataset.remove(i);
                                         }
+                                        // noinspection SuspiciousMethodCalls
+                                        mDataset.removeAll(items);
 
                                         db.close();
 
@@ -1433,15 +1443,16 @@ public class MainActivity extends AppCompatActivity {
                                         SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
                                         Cursor c;
 
-                                        List<Integer> items = getSelectedItems();
-                                        for (int i = items.size() - 1; i >= 0; i--) {
-                                            c = db.rawQuery("delete from sources where id = ?", new String[]{Integer.toString(mDataset.get(items.get(i)).getId())});
+                                        ArrayList<UniqueRecord> items = getRecordsFromSelection(mDataset, getSelectedItems());
+                                        for (UniqueRecord ur : items) {
+                                            c = db.rawQuery("delete from sources where id = ?", new String[]{Integer.toString(ur.getId())});
                                             if (c != null) {
                                                 c.moveToFirst();
                                                 c.close();
                                             }
-                                            mDataset.remove(i);
                                         }
+                                        // noinspection SuspiciousMethodCalls
+                                        mDataset.removeAll(items);
 
                                         db.close();
 
@@ -1636,15 +1647,16 @@ public class MainActivity extends AppCompatActivity {
                                         SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
                                         Cursor c;
 
-                                        List<Integer> items = getSelectedItems();
-                                        for (int i = items.size() - 1; i >= 0; i--) {
-                                            c = db.rawQuery("delete from steps where id = ?", new String[]{Integer.toString(mDataset.get(items.get(i)).getId())});
+                                        ArrayList<UniqueRecord> items = getRecordsFromSelection(mDataset, getSelectedItems());
+                                        for (UniqueRecord ur : items) {
+                                            c = db.rawQuery("delete from steps where id = ?", new String[]{Integer.toString(ur.getId())});
                                             if (c != null) {
                                                 c.moveToFirst();
                                                 c.close();
                                             }
-                                            mDataset.remove(i);
                                         }
+                                        // noinspection SuspiciousMethodCalls
+                                        mDataset.removeAll(items);
 
                                         db.close();
 

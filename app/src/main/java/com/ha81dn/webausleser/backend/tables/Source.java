@@ -3,7 +3,7 @@ package com.ha81dn.webausleser.backend.tables;
 /**
  * Created by har on 04.01.2015.
  */
-public class Source {
+public class Source implements UniqueRecord {
 
     private int id;
     private String name;

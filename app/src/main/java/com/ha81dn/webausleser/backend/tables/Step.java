@@ -3,7 +3,7 @@ package com.ha81dn.webausleser.backend.tables;
 /**
  * Created by har on 04.01.2015.
  */
-public class Step {
+public class Step implements UniqueRecord {
 
     private int id;
     private int action_id;
@@ -34,8 +34,16 @@ public class Step {
         return action_id;
     }
 
+    public void setActionId(int action_id) {
+        this.action_id = action_id;
+    }
+
     public int getSortNr() {
         return sort_nr;
+    }
+
+    public void setSortNr(int sort_nr) {
+        this.sort_nr = sort_nr;
     }
 
     public String getFunction() {
@@ -50,24 +58,16 @@ public class Step {
         return parent_id;
     }
 
+    public void setParentId(int parent_id) {
+        this.sort_nr = sort_nr;
+    }
+
     public boolean getCallFlag() {
         return call_flag;
-    }
-
-    public void setActionId(int action_id) {
-        this.action_id = action_id;
-    }
-
-    public void setSortNr(int sort_nr) {
-        this.sort_nr = sort_nr;
     }
 
     public void setFunction(String function, boolean call_flag) {
         this.function = function;
         this.call_flag = call_flag;
-    }
-
-    public void setParentId(int parent_id) {
-        this.sort_nr = sort_nr;
     }
 }

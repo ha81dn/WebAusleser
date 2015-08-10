@@ -3,7 +3,7 @@ package com.ha81dn.webausleser.backend.tables;
 /**
  * Created by har on 04.01.2015.
  */
-public class Param {
+public class Param implements UniqueRecord {
 
     private int id;
     private int step_id;
@@ -29,8 +29,16 @@ public class Param {
         return step_id;
     }
 
+    public void setStepId(int step_id) {
+        this.step_id = step_id;
+    }
+
     public int getIdx() {
         return idx;
+    }
+
+    public void setIdx(int idx) {
+        this.idx = idx;
     }
 
     public String getValue() {
@@ -43,14 +51,6 @@ public class Param {
 
     public boolean getListFlag() {
         return list_flag;
-    }
-
-    public void setStepId(int step_id) {
-        this.step_id = step_id;
-    }
-
-    public void setIdx(int idx) {
-        this.idx = idx;
     }
 
     public void setValue(String value, boolean variable_flag, boolean list_flag) {
