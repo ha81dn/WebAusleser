@@ -433,6 +433,7 @@ public class MainActivity extends AppCompatActivity {
             final MainActivity activity = (MainActivity) getActivity();
             final SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
             AlertDialog.Builder builder;
+            AlertDialog dialog;
             if (tableShow == null) {
                 // ggf. erster Assistentenschritt
                 switch (tableFrom) {
@@ -468,7 +469,7 @@ public class MainActivity extends AppCompatActivity {
                                             appActionMode.finish();
                                         }
                                     });
-                            AlertDialog dialog = builder.create();
+                            dialog = builder.create();
                             dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
                             dialog.show();
                         } else {
@@ -490,6 +491,50 @@ public class MainActivity extends AppCompatActivity {
                         }
                         break;
                     case "actions":
+                        if (moveFlag) {
+
+                        } else {
+
+                            // ToDo: vorher zurecht-ermitteln
+                            // - Liste der Quellen
+                            // - Listenposition der Quelle, die die zu kopierende(n) Aktion(en) enthält
+                            // - Listenposition der Quelle(n), die keine Aktionen enthalten
+                            // - onClick-Handler für Abbrechen, Weiter und Fertig stellen
+
+
+                            int cnt;
+
+                            builder = new AlertDialog.Builder(context);
+                            builder.setTitle(title);
+                            if (optionList != null) {
+                                cnt = optionList.length;
+                                selectedId = cnt == 1 ? 0 : -1;
+                                builder.setSingleChoiceItems(optionList, selectedId, new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        Button posButton = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
+                                        posButton.setEnabled(true);
+                                        if (finalDialogStartingAtId >= 0 && (id >= finalDialogStartingAtId ^ selectedId >= finalDialogStartingAtId)) {
+                                            if (id >= finalDialogStartingAtId)
+                                                posButton.setText(getString(R.string.finish));
+                                            else
+                                                posButton.setText(getString(R.string.next));
+                                        }
+                                        selectedId = id;
+                                    }
+                                });
+                            } else {
+                                builder.setView(inputView);
+                            }
+                            builder.setPositiveButton(finalDialogStartingAtId == -1 || selectedId == -1 || selectedId < finalDialogStartingAtId ? getString(R.string.next) : getString(R.string.finish), onClickNext);
+                            builder.setNegativeButton(getString(R.string.cancel), onClickCancel);
+                            if (onClickBack != null)
+                                builder.setNeutralButton(getString(R.string.back), onClickBack);
+                            dialog = builder.create();
+                            dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                            dialog.show();
+                            if (optionList != null && selectedId == -1)
+                                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+                        }
 
                         break;
                     case "steps":
