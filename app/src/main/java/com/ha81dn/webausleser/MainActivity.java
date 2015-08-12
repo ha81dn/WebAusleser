@@ -422,7 +422,7 @@ public class MainActivity extends AppCompatActivity {
         protected void copyRecord(final boolean moveFlag,
                                   final Context context,
                                   final ArrayList datasetFrom,
-                                  final List<Integer> idsFrom,
+                                  final List<Integer> itemsFrom,
                                   final String tableFrom,
                                   final int idShow,
                                   final String tableShow,
@@ -438,14 +438,14 @@ public class MainActivity extends AppCompatActivity {
                 // ggf. erster Assistentenschritt
                 switch (tableFrom) {
                     case "sources":
-                        if (idsFrom.size() == 1) {
+                        if (itemsFrom.size() == 1) {
                             // eine Quelle wurde zum Kopieren ausgewählt
                             builder = new AlertDialog.Builder(context);
                             builder.setTitle(getString(R.string.copySource));
                             builder.setMessage(getString(R.string.inputName));
                             final EditText input = new EditText(context);
                             builder.setView(input);
-                            final int pos = idsFrom.get(0);
+                            final int pos = itemsFrom.get(0);
                             final Source s = (Source) datasetFrom.get(pos);
                             input.setText(DatabaseHandler.getUniqueCopiedSourceName(activity, db, s.getName()));
                             input.setSelectAllOnFocus(true);
@@ -477,7 +477,7 @@ public class MainActivity extends AppCompatActivity {
                             Source s;
                             int newSourceId = -1;
                             activity.progressWheel.setVisible(true);
-                            for (int pos : idsFrom) {
+                            for (int pos : itemsFrom) {
                                 s = (Source) datasetFrom.get(pos);
                                 newSourceId = DatabaseHandler.getNewId(db, "sources");
                                 try {
@@ -501,9 +501,15 @@ public class MainActivity extends AppCompatActivity {
                             // - Listenposition der Quelle(n), die keine Aktionen enthalten
                             // - onClick-Handler für Abbrechen, Weiter und Fertig stellen
 
+                            TreeMap<String, String> map;
+                            String lstSources[];
+                            String lstIds[];
 
-                            int cnt;
+                            map = DatabaseHandler.getAlphanumericDistinct(db, "select distinct name,id from sources", null);
+                            lstSources = map.keySet().toArray(new String[map.size()]);
+                            lstIds = map.values().toArray(new String[map.size()]);
 
+                            /*
                             builder = new AlertDialog.Builder(context);
                             builder.setTitle(title);
                             if (optionList != null) {
@@ -534,6 +540,7 @@ public class MainActivity extends AppCompatActivity {
                             dialog.show();
                             if (optionList != null && selectedId == -1)
                                 dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
+                            */
                         }
 
                         break;
@@ -912,6 +919,11 @@ public class MainActivity extends AppCompatActivity {
 
                     case R.id.menu_item_select_all:
                         selectAll(mDataset.size());
+
+                        return true;
+
+                    case R.id.menu_item_copy:
+                        copyRecord(false, context, mDataset, getSelectedItems(), "actions", -1, null, -1, -1, -1, -1);
 
                         return true;
 
