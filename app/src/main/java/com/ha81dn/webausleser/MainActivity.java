@@ -501,13 +501,10 @@ public class MainActivity extends AppCompatActivity {
                             // - Listenposition der Quelle(n), die keine Aktionen enthalten
                             // - onClick-Handler für Abbrechen, Weiter und Fertig stellen
 
-                            TreeMap<String, String> map;
-                            String lstSources[];
-                            String lstIds[];
-
-                            map = DatabaseHandler.getAlphanumericDistinct(db, "select distinct name,id from sources", null);
-                            lstSources = map.keySet().toArray(new String[map.size()]);
-                            lstIds = map.values().toArray(new String[map.size()]);
+                            ArrayList<String> sources = new ArrayList<>();
+                            ArrayList<Integer> ids = new ArrayList<>();
+                            ArrayList<Boolean> sourceWithoutActions = new ArrayList<>();
+                            DatabaseHandler.getDistinct(db, "select distinct id,name,ifnull((select 0 from actions where actions.source_id=sources.id),1) from sources order by name", null, ids, sources, sourceWithoutActions);
 
                             /*
                             builder = new AlertDialog.Builder(context);

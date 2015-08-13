@@ -9,7 +9,6 @@ import com.ha81dn.webausleser.MainActivity;
 import com.ha81dn.webausleser.R;
 
 import java.util.ArrayList;
-import java.util.TreeMap;
 
 public class DatabaseHandler extends SQLiteOpenHelper {
 
@@ -86,40 +85,33 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         return newName;
     }
 
-    public static TreeMap<String, String> getAlphanumericDistinct(SQLiteDatabase db, String query, String[] params) {
+    public static void getDistinct(SQLiteDatabase db, String query, String[] params, ArrayList<Integer> intResult, ArrayList<String> strResult, ArrayList<Boolean> blnResult) {
+        boolean strFlag = strResult != null;
+        boolean intFlag = intResult != null;
+        boolean blnFlag = blnResult != null;
+        if (!intFlag && !strFlag && !blnFlag) return;
         Cursor c;
-        TreeMap<String, String> lst = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
         try {
             c = db.rawQuery(query, params);
             if (c != null) {
                 if (c.moveToFirst()) {
                     do {
-                        lst.put(c.getString(0), c.getString(1));
+                        if (intFlag) {
+                            intResult.add(c.getInt(0));
+                            if (strFlag) {
+                                strResult.add(c.getString(1));
+                                if (blnFlag) blnResult.add(c.getInt(2) != 0);
+                            } else if (blnFlag) blnResult.add(c.getInt(1) != 0);
+                        } else if (strFlag) {
+                            strResult.add(c.getString(0));
+                            if (blnFlag) blnResult.add(c.getInt(1) != 0);
+                        } else blnResult.add(c.getInt(0) != 0);
                     } while (c.moveToNext());
                 }
                 c.close();
             }
         } catch (Exception ignored) {
         }
-        return lst;
-    }
-
-    public static TreeMap<Integer, String> getNumericDistinct(SQLiteDatabase db, String query, String[] params) {
-        Cursor c;
-        TreeMap<Integer, String> lst = new TreeMap<>();
-        try {
-            c = db.rawQuery(query, params);
-            if (c != null) {
-                if (c.moveToFirst()) {
-                    do {
-                        lst.put(c.getInt(0), c.getString(1));
-                    } while (c.moveToNext());
-                }
-                c.close();
-            }
-        } catch (Exception ignored) {
-        }
-        return lst;
     }
 
     public static int getNewId(SQLiteDatabase db, String tableName) {
