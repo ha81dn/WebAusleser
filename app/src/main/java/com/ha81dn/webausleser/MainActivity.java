@@ -491,21 +491,56 @@ public class MainActivity extends AppCompatActivity {
                         }
                         break;
                     case "actions":
+
+                        // ToDo: vorher zurecht-ermitteln
+                        // - Liste der Quellen
+                        // - Listenposition der Quelle, die die zu kopierende(n) Aktion(en) enthält
+                        // - Listenposition der Quelle(n), die keine Aktionen enthalten
+                        // - onClick-Handler für Abbrechen, Weiter und Fertig stellen
+
+                        final Action a;
+                        final ArrayList<String> sources = new ArrayList<>();
+                        final ArrayList<Integer> ids = new ArrayList<>();
+                        final ArrayList<Boolean> sourceWithoutActions = new ArrayList<>();
+                        DatabaseHandler.getDistinct(db, "select distinct id,name,ifnull((select 0 from actions where actions.source_id=sources.id),1) from sources order by name", null, ids, sources, sourceWithoutActions);
+
                         if (moveFlag) {
 
                         } else {
 
-                            // ToDo: vorher zurecht-ermitteln
-                            // - Liste der Quellen
-                            // - Listenposition der Quelle, die die zu kopierende(n) Aktion(en) enthält
-                            // - Listenposition der Quelle(n), die keine Aktionen enthalten
-                            // - onClick-Handler für Abbrechen, Weiter und Fertig stellen
+                            if (itemsFrom.size() == 1) {
+                                a = (Action) datasetFrom.get(itemsFrom.get(0));
 
-                            ArrayList<String> sources = new ArrayList<>();
-                            ArrayList<Integer> ids = new ArrayList<>();
-                            ArrayList<Boolean> sourceWithoutActions = new ArrayList<>();
-                            DatabaseHandler.getDistinct(db, "select distinct id,name,ifnull((select 0 from actions where actions.source_id=sources.id),1) from sources order by name", null, ids, sources, sourceWithoutActions);
+                                builder = new AlertDialog.Builder(context);
+                                builder.setTitle(getString(R.string.copyAction));
+                                builder.setSingleChoiceItems(sources.toArray(new String[sources.size()]), ids.indexOf(a.getSourceId()), new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        Button posButton = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
+                                        if (sourceWithoutActions.get(id))
+                                            posButton.setText(getString(R.string.insert));
+                                        else
+                                            posButton.setText(getString(R.string.next));
+                                    }
+                                });
+                                builder.setPositiveButton(getString(R.string.next), new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
 
+                                    }
+                                });
+                                builder.setNegativeButton(getString(R.string.cancel), new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+
+                                    }
+                                });
+                                dialog = builder.create();
+                                dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                                dialog.show();
+                            } else {
+
+                            }
                             /*
                             builder = new AlertDialog.Builder(context);
                             builder.setTitle(title);

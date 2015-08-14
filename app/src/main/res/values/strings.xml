@@ -32,6 +32,9 @@
     <string name="fixedValue">(bestimmter Wert)</string>
     <string name="inputFixedValue">Bestimmter Wert:</string>
     <string name="inputName">Name:</string>
+    <string name="insert">Dort einfügen</string>
+    <string name="insertAfter">Danach einfügen</string>
+    <string name="insertBefore">Davor einfügen</string>
     <string name="ok">OK</string>
     <string name="back">Zurück</string>
     <string name="next">Weiter</string>
