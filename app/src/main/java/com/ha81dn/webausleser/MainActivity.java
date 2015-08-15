@@ -51,10 +51,12 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /* ToDo-Liste
+- onItemDismiss: geswiptes Item war das einzig markierte, danach ActionMode verlassen
 - Verschieben und Kopieren per ActionMode: synchron per Assistent, bisheriger Pfad vorausgewählt,
   letzter Assi-Schritt mit Buttons "davor einfügen", "danach einfügen"
 - Verschieben und Kopieren asynchron mit ProgressBar-Popup
 - If- und Schleifen-Schachtelei
+- Step-Namen ausbuddeln, sprechend übersetzen
 - Anlegen von Quellen/Aktionen: bei Namensgleichheit meckern
 - Zeilennummern bei sortierten Adaptern
 - assistentengestützte Parameter-Wertänderung
@@ -425,11 +427,17 @@ public class MainActivity extends AppCompatActivity {
                                   final List<Integer> itemsFrom,
                                   final String tableFrom,
                                   final int idShow,
-                                  final String tableShow) {
+                                  final String tableShow,
+                                  final int sortNr) {
             final MainActivity activity = (MainActivity) getActivity();
             final SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
+            final ArrayList<Integer> ids;
+            final ArrayList<Integer> sortNrs;
             AlertDialog.Builder builder;
             AlertDialog dialog;
+
+            // ToDo: Back-Buttons
+
             if (tableShow == null) {
                 // ggf. erster Assistentenschritt
                 switch (tableFrom) {
@@ -456,6 +464,7 @@ public class MainActivity extends AppCompatActivity {
                                             }
                                             activity.progressWheel.setVisible(false);
                                             appActionMode.finish();
+                                            db.close();
                                             displaySection(activity, "ROOT", -1, null, newSourceId);
                                         }
                                     });
@@ -463,6 +472,7 @@ public class MainActivity extends AppCompatActivity {
                                     new DialogInterface.OnClickListener() {
                                         public void onClick(DialogInterface dialog, int id) {
                                             appActionMode.finish();
+                                            db.close();
                                         }
                                     });
                             dialog = builder.create();
@@ -483,21 +493,23 @@ public class MainActivity extends AppCompatActivity {
                             }
                             activity.progressWheel.setVisible(false);
                             appActionMode.finish();
+                            db.close();
                             displaySection(activity, "ROOT", -1, null, newSourceId);
                         }
                         break;
                     case "actions":
                         final ArrayList<String> sources = new ArrayList<>();
-                        final ArrayList<Integer> ids = new ArrayList<>();
+                        ids = new ArrayList<>();
                         final ArrayList<Boolean> sourceWithoutActions = new ArrayList<>();
-                        DatabaseHandler.getDistinct(db, "select distinct id,name,ifnull((select 0 from actions where actions.source_id=sources.id),1) from sources order by name", null, ids, sources, sourceWithoutActions);
+                        DatabaseHandler.getDistinct(db, "select distinct id,name,ifnull((select 0 from actions where actions.source_id=sources.id),1) from sources order by name", null, ids, null, sources, sourceWithoutActions);
                         sources.add(0, getString(R.string.asFunction));
                         ids.add(0, -1);
                         sourceWithoutActions.add(0, true);
 
                         builder = new AlertDialog.Builder(context);
                         builder.setTitle(getString(R.string.copyAction));
-                        builder.setSingleChoiceItems(sources.toArray(new String[sources.size()]), ids.indexOf(((Action) datasetFrom.get(itemsFrom.get(0))).getSourceId()), new DialogInterface.OnClickListener() {
+                        selectedId = ids.indexOf(((Action) datasetFrom.get(itemsFrom.get(0))).getSourceId());
+                        builder.setSingleChoiceItems(sources.toArray(new String[sources.size()]), selectedId, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int id) {
                                 Button posButton = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
@@ -512,17 +524,28 @@ public class MainActivity extends AppCompatActivity {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 if (sourceWithoutActions.get(selectedId)) {
+                                    int newActionId = -1;
+                                    int sortNr = 0;
                                     for (int pos : itemsFrom) {
                                         Action a = (Action) datasetFrom.get(pos);
-                                        int newActionId = DatabaseHandler.getNewId(db, "actions");
-                                        copyAction(db, a.getId(), newActionId, 0, a.getName(), ids.get(selectedId), moveFlag);
+                                        newActionId = DatabaseHandler.getNewId(db, "actions");
+                                        copyAction(db, a.getId(), newActionId, sortNr++, a.getName(), ids.get(selectedId), moveFlag);
                                     }
+                                    appActionMode.finish();
+                                    db.close();
+                                    displaySection(activity, "SOURCE", idShow, null, newActionId);
                                 } else {
-                                    copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, ids.get(selectedId), "actions");
+                                    copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, ids.get(selectedId), "actions", -1);
                                 }
                             }
                         });
-                        builder.setNegativeButton(getString(R.string.cancel), null);
+                        builder.setNegativeButton(getString(R.string.cancel),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        appActionMode.finish();
+                                        db.close();
+                                    }
+                                });
                         dialog = builder.create();
                         dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
                         dialog.show();
@@ -536,9 +559,121 @@ public class MainActivity extends AppCompatActivity {
                 }
             } else if (tableShow.equals("actions")) {
                 // nächster Assistentenschritt
+                switch (tableFrom) {
+                    case "actions":
+                        final ArrayList<String> actions = new ArrayList<>();
+                        ids = new ArrayList<>();
+                        sortNrs = new ArrayList<>();
+                        final boolean destinationEqualsSource = ((Action) datasetFrom.get(itemsFrom.get(0))).getSourceId() == idShow;
+                        DatabaseHandler.getDistinct(db, "select distinct id,sort_nr,name from actions where source_id = ? order by sort_nr", new String[]{Integer.toString(idShow)}, ids, sortNrs, actions, null);
+                        if (moveFlag && destinationEqualsSource) {
+                            // beim Verschieben innerhalb der Kopiequelle spielen die Quellaktionen als Angelpunkt keine Rolle
+                            for (int pos : itemsFrom) {
+                                int idx = ids.indexOf(((Action) datasetFrom.get(itemsFrom.get(pos))).getId());
+                                ids.remove(idx);
+                                sortNrs.remove(idx);
+                                actions.remove(idx);
+                            }
+                        }
+                        actions.add(getString(R.string.insertLast));
+                        ids.add(-1);
+                        sortNrs.add(sortNrs.get(sortNrs.size() - 1) + 1);
 
+                        builder = new AlertDialog.Builder(context);
+                        builder.setTitle(getString(R.string.copyAction));
+                        selectedId = actions.size() - 1;
+                        builder.setSingleChoiceItems(actions.toArray(new String[actions.size()]), selectedId, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int id) {
+                                selectedId = id;
+                            }
+                        });
+                        builder.setPositiveButton(getString(R.string.next), new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                Action a;
+                                int sortNr = sortNrs.get(selectedId);
+                                int newActionId = -1;
+
+                                if (itemsFrom.size() == 1) {
+                                    // bei nur einer Aktion, die kopiert oder verschoben wird
+                                    if (!moveFlag && destinationEqualsSource) {
+                                        // wenn sie in die selbe Quelle kopiert wird,
+                                        // muss sie anders benannt werden
+                                        copyRecord(true, context, datasetFrom, itemsFrom, tableFrom, idShow, "label", sortNr);
+                                        return;
+                                    } else if (!destinationEqualsSource) {
+                                        // wenn sie in eine andere Quelle kopiert oder verschoben wird,
+                                        // muss sie bei Namenskollision anders benannt werden
+                                        a = (Action) datasetFrom.get(itemsFrom.get(0));
+                                        if (!a.getName().equals(DatabaseHandler.getUniqueCopiedActionName(activity, db, a.getName(), idShow))) {
+                                            copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, idShow, "label", sortNr);
+                                            return;
+                                        }
+                                    }
+                                }
+                                for (int pos : itemsFrom) {
+                                    // es kann immer eine Namenskollision auftreten, wenn mehrere Aktionen
+                                    // in eine andere Quelle kopiert oder verschoben werden
+                                    a = (Action) datasetFrom.get(pos);
+                                    newActionId = DatabaseHandler.getNewId(db, "actions");
+                                    copyAction(db, a.getId(), newActionId, sortNr++, DatabaseHandler.getUniqueCopiedActionName(activity, db, a.getName(), idShow), idShow, moveFlag);
+                                }
+                                appActionMode.finish();
+                                db.close();
+                                displaySection(activity, "SOURCE", idShow, null, newActionId);
+                            }
+                        });
+                        builder.setNegativeButton(getString(R.string.cancel),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        appActionMode.finish();
+                                        db.close();
+                                    }
+                                });
+                        dialog = builder.create();
+                        dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                        dialog.show();
+
+                        break;
+                    default:
+                        break;
+                }
+            } else if (tableShow.equals("label")) {
+                switch (tableFrom) {
+                    case "actions":
+                        // einzelne Aktion wird in selbe Quelle kopiert und muss anders benannt werden
+                        builder = new AlertDialog.Builder(context);
+                        builder.setTitle(getString(R.string.copyAction));
+                        builder.setMessage(getString(R.string.inputName));
+                        final EditText input = createInput(context, false);
+                        builder.setView(input);
+                        final int pos = itemsFrom.get(0);
+                        final Action a = (Action) datasetFrom.get(pos);
+                        input.setText(DatabaseHandler.getUniqueCopiedActionName(activity, db, a.getName(), idShow));
+                        input.setSelectAllOnFocus(true);
+                        builder.setPositiveButton(getString(R.string.ok),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        int newActionId = DatabaseHandler.getNewId(db, "actions");
+                                        copyAction(db, a.getId(), newActionId, sortNr, DatabaseHandler.getUniqueCopiedActionName(activity, db, input.getText().toString().trim(), sourceId), idShow, true);
+                                        appActionMode.finish();
+                                        db.close();
+                                        displaySection(activity, "SOURCE", idShow, null, newActionId);
+                                    }
+                                });
+                        builder.setNegativeButton(getString(R.string.cancel),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        appActionMode.finish();
+                                        db.close();
+                                    }
+                                });
+                        dialog = builder.create();
+                        dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                        dialog.show();
+                }
             }
-            db.close();
         }
 
         private void copyAction(SQLiteDatabase db, int oldId, int newId, int sortNr, String name, int sourceId, boolean moveFlag) {
@@ -992,12 +1127,12 @@ public class MainActivity extends AppCompatActivity {
                         return true;
 
                     case R.id.menu_item_copy:
-                        copyRecord(false, context, mDataset, getSelectedItems(), "actions", -1, null);
+                        copyRecord(false, context, mDataset, getSelectedItems(), "actions", -1, null, -1);
 
                         return true;
 
                     case R.id.menu_item_move:
-                        copyRecord(true, context, mDataset, getSelectedItems(), "actions", -1, null);
+                        copyRecord(true, context, mDataset, getSelectedItems(), "actions", -1, null, -1);
 
                         return true;
 
@@ -1560,7 +1695,7 @@ public class MainActivity extends AppCompatActivity {
                         return true;
 
                     case R.id.menu_item_copy:
-                        copyRecord(false, context, mDataset, getSelectedItems(), "sources", -1, null);
+                        copyRecord(false, context, mDataset, getSelectedItems(), "sources", -1, null, -1);
 
                         return true;
 
@@ -1771,12 +1906,12 @@ public class MainActivity extends AppCompatActivity {
 
                         return true;
                     case R.id.menu_item_copy:
-                        copyRecord(false, context, mDataset, getSelectedItems(), "steps", -1, null);
+                        copyRecord(false, context, mDataset, getSelectedItems(), "steps", -1, null, -1);
 
                         return true;
 
                     case R.id.menu_item_move:
-                        copyRecord(true, context, mDataset, getSelectedItems(), "steps", -1, null);
+                        copyRecord(true, context, mDataset, getSelectedItems(), "steps", -1, null, -1);
 
                         return true;
 
@@ -1854,7 +1989,7 @@ public class MainActivity extends AppCompatActivity {
                                         Cursor cF;
                                         int flag = c.getInt(3);
                                         if (flag == 1) {
-                                            cF = db.rawQuery("select name from actions where action_id = ?", new String[]{function});
+                                            cF = db.rawQuery("select name from actions where id = ?", new String[]{function});
                                             tmp = "ERROR_FUNCTION_MISSING";
                                             if (cF != null) {
                                                 if (cF.moveToFirst()) {
@@ -2108,7 +2243,6 @@ public class MainActivity extends AppCompatActivity {
                                 }
                                 c.close();
                             }
-                            db.close();
 
                             mAdapter = new ActionAdapter(actionDataset);
                             callback = new ItemTouchHelperCallback((ActionAdapter) mAdapter);
@@ -2117,9 +2251,16 @@ public class MainActivity extends AppCompatActivity {
                             touchHelper.attachToRecyclerView(mRecyclerView);
                             activeSection = "ACTIONS";
                             sourceId = id;
-                            sourceName = name;
+                            if (name == null) {
+                                c = db.rawQuery("select name from sources where id = ?", new String[]{Integer.toString(id)});
+                                if (c != null) {
+                                    if (c.moveToFirst()) sourceName = c.getString(0);
+                                    c.close();
+                                }
+                            } else sourceName = name;
                             navTitle.setText(getString(R.string.actionsFor, sourceName));
                             fab.show();
+                            db.close();
                         }
                         break;
                     case "ACTION":
@@ -2145,7 +2286,6 @@ public class MainActivity extends AppCompatActivity {
                             dialog.show();
                         } else {
                             ArrayList<Step> stepDataset = new ArrayList<>();
-
                             Cursor cF;
 
                             db = DatabaseHandler.getInstance(context).getReadableDatabase();
@@ -2158,12 +2298,10 @@ public class MainActivity extends AppCompatActivity {
                                         String function = c.getString(3);
                                         int flag = c.getInt(4);
                                         if (flag == 1) {
-                                            cF = db.rawQuery("select name from actions where action_id = ?", new String[]{function});
+                                            cF = db.rawQuery("select name from actions where id = ?", new String[]{function});
                                             tmp = "ERROR_FUNCTION_MISSING";
                                             if (cF != null) {
-                                                if (cF.moveToFirst()) {
-                                                    tmp = cF.getString(0);
-                                                }
+                                                if (cF.moveToFirst()) tmp = cF.getString(0);
                                                 cF.close();
                                             }
                                         } else tmp = function;
@@ -2172,7 +2310,6 @@ public class MainActivity extends AppCompatActivity {
                                 }
                                 c.close();
                             }
-                            db.close();
 
                             mAdapter = new StepAdapter(stepDataset);
                             callback = new ItemTouchHelperCallback((StepAdapter) mAdapter);
@@ -2181,9 +2318,16 @@ public class MainActivity extends AppCompatActivity {
                             touchHelper.attachToRecyclerView(mRecyclerView);
                             activeSection = "STEPS";
                             actionId = id;
-                            actionName = name;
+                            if (name == null) {
+                                c = db.rawQuery("select name from actions where id = ?", new String[]{Integer.toString(id)});
+                                if (c != null) {
+                                    if (c.moveToFirst()) actionName = c.getString(0);
+                                    c.close();
+                                }
+                            } else actionName = name;
                             setTextViewHTML(navTitle, getString(R.string.stepsFor, actionName) + " (<a href='SRC'>" + sourceName + "</a>)");
                             fab.show();
+                            db.close();
                         }
                         break;
                     case "STEP":
@@ -2203,7 +2347,6 @@ public class MainActivity extends AppCompatActivity {
                                 }
                                 c.close();
                             }
-                            db.close();
 
                             mAdapter = new ParamAdapter(paramDataset);
                             callback = new ItemTouchHelperCallback((ParamAdapter) mAdapter);
@@ -2212,9 +2355,29 @@ public class MainActivity extends AppCompatActivity {
                             touchHelper.attachToRecyclerView(mRecyclerView);
                             activeSection = "PARAMS";
                             stepId = id;
-                            stepName = name;
+                            if (name == null) {
+                                c = db.rawQuery("select function,call_flag from steps where id = ?", new String[]{Integer.toString(id)});
+                                if (c != null) {
+                                    if (c.moveToFirst()) {
+                                        String function = c.getString(0);
+                                        int flag = c.getInt(1);
+                                        if (flag == 1) {
+                                            Cursor cF;
+                                            cF = db.rawQuery("select name from actions where id = ?", new String[]{function});
+                                            tmp = "ERROR_FUNCTION_MISSING";
+                                            if (cF != null) {
+                                                if (cF.moveToFirst()) tmp = cF.getString(0);
+                                                cF.close();
+                                            }
+                                        } else tmp = function;
+                                        stepName = tmp;
+                                    }
+                                    c.close();
+                                }
+                            } else stepName = name;
                             setTextViewHTML(navTitle, getString(R.string.paramsFor, stepName) + " (<a href='SRC'>" + sourceName + "</a> / <a href='ACT'>" + actionName + "</a>)");
                             fab.hide();
+                            db.close();
                         }
                         break;
                 }
@@ -2253,6 +2416,7 @@ public class MainActivity extends AppCompatActivity {
                 final DialogInterface.OnClickListener cancelWizard = new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
                         stepId = -1;
+                        db.close();
                     }
                 };
 
@@ -2780,7 +2944,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             private void createParamByWizard(final Context context,
-                                             SQLiteDatabase db,
+                                             final SQLiteDatabase db,
                                              final ArrayList<Param> params,
                                              final boolean fixedValue,
                                              final boolean newVariable,
@@ -2840,7 +3004,7 @@ public class MainActivity extends AppCompatActivity {
                                             showInnerDialog = true;
                                         } else {
                                             // bekannte Variable/Liste wurde ausgewählt
-                                            proceedCreateStep(context, params, paramIdx, lst.get(selectedId), newVariable ? 1 : 0, newList ? 1 : 0, finalDialogStartingAtId);
+                                            proceedCreateStep(context, db, params, paramIdx, lst.get(selectedId), newVariable ? 1 : 0, newList ? 1 : 0, finalDialogStartingAtId);
                                         }
                                         if (showInnerDialog) {
                                             // Eingabedialog für bestimmten Wert bzw. neuen Variablen-/Listennamen zeigen
@@ -2848,14 +3012,14 @@ public class MainActivity extends AppCompatActivity {
                                             showCreateStepWizard(context, title, msg, finalDialogStartingAtId == -1 ? -1 : 0, null, input, backFromInnerDialog, cancelWizard,
                                                     new DialogInterface.OnClickListener() {
                                                         public void onClick(DialogInterface dialog, int id) {
-                                                            proceedCreateStep(context, params, paramIdx, input.getText().toString().trim(), varFlag[0], lstFlag[0], finalDialogStartingAtId);
+                                                            proceedCreateStep(context, db, params, paramIdx, input.getText().toString().trim(), varFlag[0], lstFlag[0], finalDialogStartingAtId);
                                                         }
                                                     }
                                             );
                                         }
                                     } else if (singleInput != null) {
                                         // einzelne Eingabe
-                                        proceedCreateStep(context, params, paramIdx, singleInput.getText().toString().trim(), 0, 0, finalDialogStartingAtId);
+                                        proceedCreateStep(context, db, params, paramIdx, singleInput.getText().toString().trim(), 0, 0, finalDialogStartingAtId);
                                     }
                                 } else {
                                     createStep(params);
@@ -2864,12 +3028,14 @@ public class MainActivity extends AppCompatActivity {
                         });
             }
 
-            private void proceedCreateStep(Context context, ArrayList<Param> params, int paramIdx, String paramValue, int varFlag, int lstFlag, int finalDialogStartingAtId) {
+            private void proceedCreateStep(Context context, SQLiteDatabase db, ArrayList<Param> params, int paramIdx, String paramValue, int varFlag, int lstFlag, int finalDialogStartingAtId) {
                 params.add(new Param(-1, stepId, paramIdx, paramValue, varFlag, lstFlag));
                 if (finalDialogStartingAtId == -1)
                     createStep(params);
-                else
+                else {
+                    db.close();
                     insertRow(context, "STEP", stepName, stepId, params);
+                }
             }
 
             private void showCreateStepWizard(final Context context,

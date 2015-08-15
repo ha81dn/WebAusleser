@@ -85,19 +85,32 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         return newName;
     }
 
-    public static void getDistinct(SQLiteDatabase db, String query, String[] params, ArrayList<Integer> intResult, ArrayList<String> strResult, ArrayList<Boolean> blnResult) {
+    public static void getDistinct(SQLiteDatabase db, String query, String[] params, ArrayList<Integer> int1Result, ArrayList<Integer> int2Result, ArrayList<String> strResult, ArrayList<Boolean> blnResult) {
         boolean strFlag = strResult != null;
-        boolean intFlag = intResult != null;
+        boolean int1Flag = int1Result != null;
+        boolean int2Flag = int2Result != null;
         boolean blnFlag = blnResult != null;
-        if (!intFlag && !strFlag && !blnFlag) return;
+        if (!int1Flag && !int2Flag && !strFlag && !blnFlag) return;
         Cursor c;
         try {
             c = db.rawQuery(query, params);
             if (c != null) {
                 if (c.moveToFirst()) {
                     do {
-                        if (intFlag) {
-                            intResult.add(c.getInt(0));
+                        if (int1Flag) {
+                            int1Result.add(c.getInt(0));
+                            if (int2Flag) {
+                                int2Result.add(c.getInt(1));
+                                if (strFlag) {
+                                    strResult.add(c.getString(2));
+                                    if (blnFlag) blnResult.add(c.getInt(3) != 0);
+                                } else if (blnFlag) blnResult.add(c.getInt(2) != 0);
+                            } else if (strFlag) {
+                                strResult.add(c.getString(1));
+                                if (blnFlag) blnResult.add(c.getInt(2) != 0);
+                            } else if (blnFlag) blnResult.add(c.getInt(1) != 0);
+                        } else if (int2Flag) {
+                            int2Result.add(c.getInt(0));
                             if (strFlag) {
                                 strResult.add(c.getString(1));
                                 if (blnFlag) blnResult.add(c.getInt(2) != 0);
