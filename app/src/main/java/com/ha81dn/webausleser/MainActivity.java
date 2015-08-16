@@ -570,7 +570,7 @@ public class MainActivity extends AppCompatActivity {
                         selectedId = -1;
                         c = db.rawQuery("select source_id from actions where id = ?", new String[]{Integer.toString(((Step) datasetFrom.get(itemsFrom.get(0))).getActionId())});
                         if (c != null) {
-                            if (c.moveToFirst()) selectedId = c.getInt(0);
+                            if (c.moveToFirst()) selectedId = ids.indexOf(c.getInt(0));
                             c.close();
                         }
 
