@@ -85,7 +85,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         return newName;
     }
 
-    public static void getDistinct(SQLiteDatabase db, String query, String[] params, ArrayList<Integer> int1Result, ArrayList<Integer> int2Result, ArrayList<String> strResult, ArrayList<Boolean> blnResult) {
+    public static void selectAsList(SQLiteDatabase db, String query, String[] params, ArrayList<Integer> int1Result, ArrayList<Integer> int2Result, ArrayList<String> strResult, ArrayList<Boolean> blnResult) {
         boolean strFlag = strResult != null;
         boolean int1Flag = int1Result != null;
         boolean int2Flag = int2Result != null;

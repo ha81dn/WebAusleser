@@ -10,6 +10,7 @@
     <string name="paramsFor">Parameter für %1$s</string>
     <string name="newFunction">Funktion hinzufügen</string>
     <string name="asFunction">(neue Funktion)</string>
+    <string name="toFunction">(in Funktion einfügen)</string>
     <string name="renameFunction">Funktion umbenennen</string>
     <string name="copyFunction">Funktion kopieren</string>
     <string name="newSource">Quelle hinzufügen</string>

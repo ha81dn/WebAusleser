@@ -50,8 +50,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-/* ToDo-Liste
+/* FixMe-Liste
 - onItemDismiss: geswiptes Item war das einzig markierte, danach ActionMode verlassen
+*/
+
+/* ToDo-Liste
 - Verschieben und Kopieren per ActionMode: synchron per Assistent, bisheriger Pfad vorausgewählt,
   letzter Assi-Schritt mit Buttons "davor einfügen", "danach einfügen"
 - Verschieben und Kopieren asynchron mit ProgressBar-Popup
@@ -81,7 +84,6 @@ import java.util.TreeMap;
 - ERL Hinzufüge-Item durch FAB (floating action button) ersetzen
 - ERL Umbenennen per ActionMode (synchron)
 - ERL Löschen debuggen, da kommen die Adapter-Indizes durcheinander!!!
-
 */
 
 public class MainActivity extends AppCompatActivity {
@@ -498,22 +500,22 @@ public class MainActivity extends AppCompatActivity {
                         }
                         break;
                     case "actions":
-                        final ArrayList<String> sources = new ArrayList<>();
+                        final ArrayList<String> actionSources = new ArrayList<>();
                         ids = new ArrayList<>();
-                        final ArrayList<Boolean> sourceWithoutActions = new ArrayList<>();
-                        DatabaseHandler.getDistinct(db, "select distinct id,name,ifnull((select 0 from actions where actions.source_id=sources.id),1) from sources order by name", null, ids, null, sources, sourceWithoutActions);
-                        sources.add(0, getString(R.string.asFunction));
+                        final ArrayList<Boolean> actionSourceWithoutActions = new ArrayList<>();
+                        DatabaseHandler.selectAsList(db, "select id,name,ifnull((select 0 from actions where actions.source_id=sources.id),1) from sources order by name", null, ids, null, actionSources, actionSourceWithoutActions);
+                        actionSources.add(0, getString(R.string.asFunction));
                         ids.add(0, -1);
-                        sourceWithoutActions.add(0, true);
+                        actionSourceWithoutActions.add(0, true);
 
                         builder = new AlertDialog.Builder(context);
-                        builder.setTitle(getString(R.string.copyAction));
+                        builder.setTitle(moveFlag ? getString(R.string.moveAction) : getString(R.string.copyAction));
                         selectedId = ids.indexOf(((Action) datasetFrom.get(itemsFrom.get(0))).getSourceId());
-                        builder.setSingleChoiceItems(sources.toArray(new String[sources.size()]), selectedId, new DialogInterface.OnClickListener() {
+                        builder.setSingleChoiceItems(actionSources.toArray(new String[actionSources.size()]), selectedId, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int id) {
                                 Button posButton = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
-                                if (sourceWithoutActions.get(id))
+                                if (actionSourceWithoutActions.get(id))
                                     posButton.setText(getString(R.string.insert));
                                 else
                                     posButton.setText(getString(R.string.next));
@@ -523,7 +525,7 @@ public class MainActivity extends AppCompatActivity {
                         builder.setPositiveButton(getString(R.string.next), new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                if (sourceWithoutActions.get(selectedId)) {
+                                if (actionSourceWithoutActions.get(selectedId)) {
                                     int newActionId = -1;
                                     int sortNr = 0;
                                     for (int pos : itemsFrom) {
@@ -536,6 +538,7 @@ public class MainActivity extends AppCompatActivity {
                                     displaySection(activity, "SOURCE", idShow, null, newActionId);
                                 } else {
                                     copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, ids.get(selectedId), "actions", -1);
+                                    db.close();
                                 }
                             }
                         });
@@ -552,6 +555,52 @@ public class MainActivity extends AppCompatActivity {
 
                         break;
                     case "steps":
+                        final ArrayList<String> stepSources = new ArrayList<>();
+                        Cursor c;
+                        ids = new ArrayList<>();
+                        DatabaseHandler.selectAsList(db, "select id,name from sources where exists (select null from actions where actions.source_id=sources.id) order by name", null, ids, null, stepSources, null);
+                        c = db.rawQuery("select count(*) from actions where source_id=-1", null);
+                        if (c != null) {
+                            if (c.moveToFirst()) {
+                                if (c.getInt(0) >= 1) {
+                                    stepSources.add(0, getString(R.string.toFunction));
+                                    ids.add(0, -1);
+                                }
+                            }
+                            c.close();
+                        }
+                        selectedId = -1;
+                        c = db.rawQuery("select source_id from actions where id = ?", new String[]{Integer.toString(((Step) datasetFrom.get(itemsFrom.get(0))).getActionId())});
+                        if (c != null) {
+                            if (c.moveToFirst()) selectedId = c.getInt(0);
+                            c.close();
+                        }
+
+                        builder = new AlertDialog.Builder(context);
+                        builder.setTitle(moveFlag ? getString(R.string.moveStep) : getString(R.string.copyStep));
+                        builder.setSingleChoiceItems(stepSources.toArray(new String[stepSources.size()]), selectedId, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int id) {
+                                selectedId = id;
+                            }
+                        });
+                        builder.setPositiveButton(getString(R.string.next), new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, ids.get(selectedId), "actions", -1);
+                                db.close();
+                            }
+                        });
+                        builder.setNegativeButton(getString(R.string.cancel),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        appActionMode.finish();
+                                        db.close();
+                                    }
+                                });
+                        dialog = builder.create();
+                        dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                        dialog.show();
 
                         break;
                     default:
@@ -564,9 +613,9 @@ public class MainActivity extends AppCompatActivity {
                         final ArrayList<String> actions = new ArrayList<>();
                         ids = new ArrayList<>();
                         sortNrs = new ArrayList<>();
-                        final boolean destinationEqualsSource = ((Action) datasetFrom.get(itemsFrom.get(0))).getSourceId() == idShow;
-                        DatabaseHandler.getDistinct(db, "select distinct id,sort_nr,name from actions where source_id = ? order by sort_nr", new String[]{Integer.toString(idShow)}, ids, sortNrs, actions, null);
-                        if (moveFlag && destinationEqualsSource) {
+                        final boolean actionDestinationEqualsSource = ((Action) datasetFrom.get(itemsFrom.get(0))).getSourceId() == idShow;
+                        DatabaseHandler.selectAsList(db, "select id,sort_nr,name from actions where source_id = ? order by sort_nr", new String[]{Integer.toString(idShow)}, ids, sortNrs, actions, null);
+                        if (moveFlag && actionDestinationEqualsSource) {
                             // beim Verschieben innerhalb der Kopiequelle spielen die Quellaktionen als Angelpunkt keine Rolle
                             for (int pos : itemsFrom) {
                                 int idx = ids.indexOf(((Action) datasetFrom.get(itemsFrom.get(pos))).getId());
@@ -580,7 +629,7 @@ public class MainActivity extends AppCompatActivity {
                         sortNrs.add(sortNrs.get(sortNrs.size() - 1) + 1);
 
                         builder = new AlertDialog.Builder(context);
-                        builder.setTitle(getString(R.string.copyAction));
+                        builder.setTitle(moveFlag ? getString(R.string.moveAction) : getString(R.string.copyAction));
                         selectedId = actions.size() - 1;
                         builder.setSingleChoiceItems(actions.toArray(new String[actions.size()]), selectedId, new DialogInterface.OnClickListener() {
                             @Override
@@ -597,17 +646,19 @@ public class MainActivity extends AppCompatActivity {
 
                                 if (itemsFrom.size() == 1) {
                                     // bei nur einer Aktion, die kopiert oder verschoben wird
-                                    if (!moveFlag && destinationEqualsSource) {
+                                    if (!moveFlag && actionDestinationEqualsSource) {
                                         // wenn sie in die selbe Quelle kopiert wird,
                                         // muss sie anders benannt werden
                                         copyRecord(true, context, datasetFrom, itemsFrom, tableFrom, idShow, "label", sortNr);
+                                        db.close();
                                         return;
-                                    } else if (!destinationEqualsSource) {
+                                    } else if (!actionDestinationEqualsSource) {
                                         // wenn sie in eine andere Quelle kopiert oder verschoben wird,
                                         // muss sie bei Namenskollision anders benannt werden
                                         a = (Action) datasetFrom.get(itemsFrom.get(0));
                                         if (!a.getName().equals(DatabaseHandler.getUniqueCopiedActionName(activity, db, a.getName(), idShow))) {
                                             copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, idShow, "label", sortNr);
+                                            db.close();
                                             return;
                                         }
                                     }
@@ -636,15 +687,148 @@ public class MainActivity extends AppCompatActivity {
                         dialog.show();
 
                         break;
+                    case "steps":
+                        final ArrayList<String> stepActions = new ArrayList<>();
+                        ids = new ArrayList<>();
+                        final ArrayList<Boolean> actionsWithoutSteps = new ArrayList<>();
+                        DatabaseHandler.selectAsList(db, "select id,name,ifnull((select 0 from steps where steps.action_id=actions.id),1) from actions where source_id = ? order by sort_nr", new String[]{Integer.toString(idShow)}, ids, null, stepActions, actionsWithoutSteps);
+
+                        builder = new AlertDialog.Builder(context);
+                        builder.setTitle(moveFlag ? getString(R.string.moveStep) : getString(R.string.copyStep));
+                        selectedId = ids.indexOf(((Step) datasetFrom.get(itemsFrom.get(0))).getActionId());
+                        builder.setSingleChoiceItems(stepActions.toArray(new String[stepActions.size()]), selectedId, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int id) {
+                                Button posButton = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
+                                if (actionsWithoutSteps.get(id))
+                                    posButton.setText(getString(R.string.insert));
+                                else
+                                    posButton.setText(getString(R.string.next));
+                                selectedId = id;
+                            }
+                        });
+                        builder.setPositiveButton(getString(R.string.next), new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                if (actionsWithoutSteps.get(selectedId)) {
+                                    int newStepId = -1;
+                                    int sortNr = 0;
+                                    for (int pos : itemsFrom) {
+                                        Step s = (Step) datasetFrom.get(pos);
+                                        newStepId = DatabaseHandler.getNewId(db, "steps");
+                                        copyStep(db, s.getId(), newStepId, sortNr++, s.getName(), s.getCallFlag(), -1, ids.get(selectedId), moveFlag);
+                                    }
+                                    appActionMode.finish();
+                                    db.close();
+                                    displaySection(activity, "ACTION", idShow, null, newStepId);
+                                } else {
+                                    copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, ids.get(selectedId), "steps", -1);
+                                    db.close();
+                                }
+                            }
+                        });
+                        builder.setNegativeButton(getString(R.string.cancel),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        appActionMode.finish();
+                                        db.close();
+                                    }
+                                });
+                        dialog = builder.create();
+                        dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                        dialog.show();
+
+                        break;
                     default:
                         break;
                 }
+            } else if (tableShow.equals("steps")) {
+                final ArrayList<String> steps = new ArrayList<>();
+                ids = new ArrayList<>();
+                sortNrs = new ArrayList<>();
+                final boolean stepDestinationEqualsSource = ((Step) datasetFrom.get(itemsFrom.get(0))).getActionId() == idShow;
+
+
+/*
+                DatabaseHandler.selectAsList(db, "select id,sort_nr,name from actions where source_id = ? order by sort_nr", new String[]{Integer.toString(idShow)}, ids, sortNrs, steps, null);
+                if (moveFlag && stepDestinationEqualsSource) {
+                    // beim Verschieben innerhalb der Kopiequelle spielen die Quellaktionen als Angelpunkt keine Rolle
+                    for (int pos : itemsFrom) {
+                        int idx = ids.indexOf(((Action) datasetFrom.get(itemsFrom.get(pos))).getId());
+                        ids.remove(idx);
+                        sortNrs.remove(idx);
+                        actions.remove(idx);
+                    }
+                }
+                actions.add(getString(R.string.insertLast));
+                ids.add(-1);
+                sortNrs.add(sortNrs.get(sortNrs.size() - 1) + 1);
+
+                builder = new AlertDialog.Builder(context);
+                builder.setTitle(moveFlag ? getString(R.string.moveAction) : getString(R.string.copyAction));
+                selectedId = actions.size() - 1;
+                builder.setSingleChoiceItems(actions.toArray(new String[actions.size()]), selectedId, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int id) {
+                        selectedId = id;
+                    }
+                });
+                builder.setPositiveButton(getString(R.string.next), new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Action a;
+                        int sortNr = sortNrs.get(selectedId);
+                        int newActionId = -1;
+
+                        if (itemsFrom.size() == 1) {
+                            // bei nur einer Aktion, die kopiert oder verschoben wird
+                            if (!moveFlag && stepDestinationEqualsSource) {
+                                // wenn sie in die selbe Quelle kopiert wird,
+                                // muss sie anders benannt werden
+                                copyRecord(true, context, datasetFrom, itemsFrom, tableFrom, idShow, "label", sortNr);
+                                db.close();
+                                return;
+                            } else if (!stepDestinationEqualsSource) {
+                                // wenn sie in eine andere Quelle kopiert oder verschoben wird,
+                                // muss sie bei Namenskollision anders benannt werden
+                                a = (Action) datasetFrom.get(itemsFrom.get(0));
+                                if (!a.getName().equals(DatabaseHandler.getUniqueCopiedActionName(activity, db, a.getName(), idShow))) {
+                                    copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, idShow, "label", sortNr);
+                                    db.close();
+                                    return;
+                                }
+                            }
+                        }
+                        for (int pos : itemsFrom) {
+                            // es kann immer eine Namenskollision auftreten, wenn mehrere Aktionen
+                            // in eine andere Quelle kopiert oder verschoben werden
+                            a = (Action) datasetFrom.get(pos);
+                            newActionId = DatabaseHandler.getNewId(db, "actions");
+                            copyAction(db, a.getId(), newActionId, sortNr++, DatabaseHandler.getUniqueCopiedActionName(activity, db, a.getName(), idShow), idShow, moveFlag);
+                        }
+                        appActionMode.finish();
+                        db.close();
+                        displaySection(activity, "SOURCE", idShow, null, newActionId);
+                    }
+                });
+                builder.setNegativeButton(getString(R.string.cancel),
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int id) {
+                                appActionMode.finish();
+                                db.close();
+                            }
+                        });
+                dialog = builder.create();
+                dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                dialog.show();
+*/
+
             } else if (tableShow.equals("label")) {
                 switch (tableFrom) {
                     case "actions":
                         // einzelne Aktion wird in selbe Quelle kopiert und muss anders benannt werden
                         builder = new AlertDialog.Builder(context);
-                        builder.setTitle(getString(R.string.copyAction));
+                        builder.setTitle(moveFlag ? getString(R.string.moveAction) : getString(R.string.copyAction));
                         builder.setMessage(getString(R.string.inputName));
                         final EditText input = createInput(context, false);
                         builder.setView(input);
@@ -672,6 +856,63 @@ public class MainActivity extends AppCompatActivity {
                         dialog = builder.create();
                         dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
                         dialog.show();
+                }
+            }
+        }
+
+        private void copyStep(SQLiteDatabase db, int oldId, int newId, int sortNr, String function, boolean callFlag, int parentId, int actionId, boolean moveFlag) {
+            Cursor cS, cP;
+            ContentValues vals = new ContentValues();
+            boolean exFlag = false;
+
+            // beim Einfügen nachfolgende Sortiernummern inkrementieren
+            cS = db.rawQuery("update steps set sort_nr=sort_nr+1 where action_id = ? and parent_id = ? and sort_nr >= ?", new String[]{Integer.toString(actionId), Integer.toString(parentId), Integer.toString(sortNr)});
+            if (cS != null) {
+                cS.moveToFirst();
+                cS.close();
+            }
+
+            vals.put("id", newId);
+            vals.put("action_id", actionId);
+            vals.put("sort_nr", sortNr);
+            vals.put("function", function);
+            vals.put("call_flag", callFlag ? 1 : 0);
+            vals.put("parent_id", parentId);
+            try {
+                db.insert("steps", null, vals);
+            } catch (Exception ignored) {
+                exFlag = true;
+            }
+
+            // den ganzen abhängigen Tabellenkram nachziehen (insert into actions ...)
+            cP = db.rawQuery("select id, idx, value, variable_flag, list_flag from params where step_id = ?", new String[]{Integer.toString(oldId)});
+            if (cP != null) {
+                if (cP.moveToFirst()) {
+                    do {
+                        int newParamId = DatabaseHandler.getNewId(db, "params");
+                        vals.clear();
+                        vals.put("id", newParamId);
+                        vals.put("step_id", newId);
+                        vals.put("idx", cP.getInt(1));
+                        vals.put("value", cP.getString(2));
+                        vals.put("variable_flag", cP.getInt(3));
+                        vals.put("list_flag", cP.getInt(4));
+                        try {
+                            db.insert("params", null, vals);
+                        } catch (Exception ignored) {
+                            exFlag = true;
+                        }
+                    }
+                    while (cP.moveToNext());
+                }
+                cP.close();
+            }
+
+            if (!exFlag && moveFlag) {
+                cS = db.rawQuery("delete from steps where id = ?", new String[]{Integer.toString(oldId)});
+                if (cS != null) {
+                    cS.moveToFirst();
+                    cS.close();
                 }
             }
         }
