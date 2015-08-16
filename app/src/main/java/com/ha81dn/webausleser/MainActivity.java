@@ -55,10 +55,8 @@ import java.util.TreeMap;
 */
 
 /* ToDo-Liste
-- Verschieben und Kopieren per ActionMode: synchron per Assistent, bisheriger Pfad vorausgewählt,
-  letzter Assi-Schritt mit Buttons "davor einfügen", "danach einfügen"
+- If- und Schleifen-Schachtelei mit Implikationen fürs Browsen, Kopieren etc.
 - Verschieben und Kopieren asynchron mit ProgressBar-Popup
-- If- und Schleifen-Schachtelei
 - Step-Namen ausbuddeln, sprechend übersetzen
 - Anlegen von Quellen/Aktionen: bei Namensgleichheit meckern
 - Zeilennummern bei sortierten Adaptern
@@ -84,6 +82,7 @@ import java.util.TreeMap;
 - ERL Hinzufüge-Item durch FAB (floating action button) ersetzen
 - ERL Umbenennen per ActionMode (synchron)
 - ERL Löschen debuggen, da kommen die Adapter-Indizes durcheinander!!!
+- ERL Verschieben und Kopieren per ActionMode: synchron per Assistent, bisheriger Pfad vorausgewählt
 */
 
 public class MainActivity extends AppCompatActivity {
@@ -538,7 +537,6 @@ public class MainActivity extends AppCompatActivity {
                                     displaySection(activity, "SOURCE", idShow, null, newActionId);
                                 } else {
                                     copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, ids.get(selectedId), "actions", -1);
-                                    db.close();
                                 }
                             }
                         });
@@ -588,7 +586,6 @@ public class MainActivity extends AppCompatActivity {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, ids.get(selectedId), "actions", -1);
-                                db.close();
                             }
                         });
                         builder.setNegativeButton(getString(R.string.cancel),
@@ -650,7 +647,6 @@ public class MainActivity extends AppCompatActivity {
                                         // wenn sie in die selbe Quelle kopiert wird,
                                         // muss sie anders benannt werden
                                         copyRecord(true, context, datasetFrom, itemsFrom, tableFrom, idShow, "label", sortNr);
-                                        db.close();
                                         return;
                                     } else if (!actionDestinationEqualsSource) {
                                         // wenn sie in eine andere Quelle kopiert oder verschoben wird,
@@ -658,7 +654,6 @@ public class MainActivity extends AppCompatActivity {
                                         a = (Action) datasetFrom.get(itemsFrom.get(0));
                                         if (!a.getName().equals(DatabaseHandler.getUniqueCopiedActionName(activity, db, a.getName(), idShow))) {
                                             copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, idShow, "label", sortNr);
-                                            db.close();
                                             return;
                                         }
                                     }
@@ -720,10 +715,9 @@ public class MainActivity extends AppCompatActivity {
                                     }
                                     appActionMode.finish();
                                     db.close();
-                                    displaySection(activity, "ACTION", idShow, null, newStepId);
+                                    displaySection(activity, "ACTION", ids.get(selectedId), null, newStepId);
                                 } else {
                                     copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, ids.get(selectedId), "steps", -1);
-                                    db.close();
                                 }
                             }
                         });
@@ -743,85 +737,69 @@ public class MainActivity extends AppCompatActivity {
                         break;
                 }
             } else if (tableShow.equals("steps")) {
-                final ArrayList<String> steps = new ArrayList<>();
-                ids = new ArrayList<>();
-                sortNrs = new ArrayList<>();
-                final boolean stepDestinationEqualsSource = ((Step) datasetFrom.get(itemsFrom.get(0))).getActionId() == idShow;
+                switch (tableFrom) {
+                    case "steps":
+                        final ArrayList<String> steps = new ArrayList<>();
+                        ids = new ArrayList<>();
+                        sortNrs = new ArrayList<>();
+                        final boolean stepDestinationEqualsSource = ((Step) datasetFrom.get(itemsFrom.get(0))).getActionId() == idShow;
 
-
-/*
-                DatabaseHandler.selectAsList(db, "select id,sort_nr,name from actions where source_id = ? order by sort_nr", new String[]{Integer.toString(idShow)}, ids, sortNrs, steps, null);
-                if (moveFlag && stepDestinationEqualsSource) {
-                    // beim Verschieben innerhalb der Kopiequelle spielen die Quellaktionen als Angelpunkt keine Rolle
-                    for (int pos : itemsFrom) {
-                        int idx = ids.indexOf(((Action) datasetFrom.get(itemsFrom.get(pos))).getId());
-                        ids.remove(idx);
-                        sortNrs.remove(idx);
-                        actions.remove(idx);
-                    }
-                }
-                actions.add(getString(R.string.insertLast));
-                ids.add(-1);
-                sortNrs.add(sortNrs.get(sortNrs.size() - 1) + 1);
-
-                builder = new AlertDialog.Builder(context);
-                builder.setTitle(moveFlag ? getString(R.string.moveAction) : getString(R.string.copyAction));
-                selectedId = actions.size() - 1;
-                builder.setSingleChoiceItems(actions.toArray(new String[actions.size()]), selectedId, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int id) {
-                        selectedId = id;
-                    }
-                });
-                builder.setPositiveButton(getString(R.string.next), new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        Action a;
-                        int sortNr = sortNrs.get(selectedId);
-                        int newActionId = -1;
-
-                        if (itemsFrom.size() == 1) {
-                            // bei nur einer Aktion, die kopiert oder verschoben wird
-                            if (!moveFlag && stepDestinationEqualsSource) {
-                                // wenn sie in die selbe Quelle kopiert wird,
-                                // muss sie anders benannt werden
-                                copyRecord(true, context, datasetFrom, itemsFrom, tableFrom, idShow, "label", sortNr);
-                                db.close();
-                                return;
-                            } else if (!stepDestinationEqualsSource) {
-                                // wenn sie in eine andere Quelle kopiert oder verschoben wird,
-                                // muss sie bei Namenskollision anders benannt werden
-                                a = (Action) datasetFrom.get(itemsFrom.get(0));
-                                if (!a.getName().equals(DatabaseHandler.getUniqueCopiedActionName(activity, db, a.getName(), idShow))) {
-                                    copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, idShow, "label", sortNr);
-                                    db.close();
-                                    return;
-                                }
+                        DatabaseHandler.selectAsList(db, "select id,sort_nr,function from steps where action_id = ? order by sort_nr", new String[]{Integer.toString(idShow)}, ids, sortNrs, steps, null);
+                        if (moveFlag && stepDestinationEqualsSource) {
+                            // beim Verschieben innerhalb der Kopiequelle spielen die Quellschritte als Angelpunkt keine Rolle
+                            for (int pos : itemsFrom) {
+                                int idx = ids.indexOf(((Step) datasetFrom.get(itemsFrom.get(pos))).getId());
+                                ids.remove(idx);
+                                sortNrs.remove(idx);
+                                steps.remove(idx);
                             }
                         }
-                        for (int pos : itemsFrom) {
-                            // es kann immer eine Namenskollision auftreten, wenn mehrere Aktionen
-                            // in eine andere Quelle kopiert oder verschoben werden
-                            a = (Action) datasetFrom.get(pos);
-                            newActionId = DatabaseHandler.getNewId(db, "actions");
-                            copyAction(db, a.getId(), newActionId, sortNr++, DatabaseHandler.getUniqueCopiedActionName(activity, db, a.getName(), idShow), idShow, moveFlag);
-                        }
-                        appActionMode.finish();
-                        db.close();
-                        displaySection(activity, "SOURCE", idShow, null, newActionId);
-                    }
-                });
-                builder.setNegativeButton(getString(R.string.cancel),
-                        new DialogInterface.OnClickListener() {
+                        steps.add(getString(R.string.insertLast));
+                        ids.add(-1);
+                        sortNrs.add(sortNrs.get(sortNrs.size() - 1) + 1);
+
+                        builder = new AlertDialog.Builder(context);
+                        builder.setTitle(moveFlag ? getString(R.string.moveStep) : getString(R.string.copyStep));
+                        selectedId = steps.size() - 1;
+                        builder.setSingleChoiceItems(steps.toArray(new String[steps.size()]), selectedId, new DialogInterface.OnClickListener() {
+                            @Override
                             public void onClick(DialogInterface dialog, int id) {
-                                appActionMode.finish();
-                                db.close();
+                                selectedId = id;
                             }
                         });
-                dialog = builder.create();
-                dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
-                dialog.show();
-*/
+                        builder.setPositiveButton(getString(R.string.next), new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                Step s;
+                                int sortNr = sortNrs.get(selectedId);
+                                int newStepId = -1;
+
+                                for (int pos : itemsFrom) {
+                                    s = (Step) datasetFrom.get(pos);
+                                    newStepId = DatabaseHandler.getNewId(db, "steps");
+                                    copyStep(db, s.getId(), newStepId, sortNr++, s.getName(), s.getCallFlag(), -1, idShow, moveFlag);
+                                }
+                                appActionMode.finish();
+                                db.close();
+                                displaySection(activity, "ACTION", idShow, null, newStepId);
+                            }
+                        });
+                        builder.setNegativeButton(getString(R.string.cancel),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        appActionMode.finish();
+                                        db.close();
+                                    }
+                                });
+                        dialog = builder.create();
+                        dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                        dialog.show();
+
+                        break;
+
+                    default:
+                        break;
+                }
 
             } else if (tableShow.equals("label")) {
                 switch (tableFrom) {
@@ -856,6 +834,10 @@ public class MainActivity extends AppCompatActivity {
                         dialog = builder.create();
                         dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
                         dialog.show();
+
+                        break;
+                    default:
+                        break;
                 }
             }
         }
