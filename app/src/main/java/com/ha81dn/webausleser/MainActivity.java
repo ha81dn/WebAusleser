@@ -502,7 +502,7 @@ public class MainActivity extends AppCompatActivity {
                         final ArrayList<String> actionSources = new ArrayList<>();
                         ids = new ArrayList<>();
                         final ArrayList<Boolean> actionSourceWithoutActions = new ArrayList<>();
-                        DatabaseHandler.selectAsList(db, "select id,name,ifnull((select 0 from actions where actions.source_id=sources.id),1) from sources order by name", null, ids, null, actionSources, actionSourceWithoutActions);
+                        DatabaseHandler.selectAsList(db, "select id,name,ifnull((select 0 from actions where actions.source_id=sources.id" + (moveFlag ? " and actions.id not in " + getInList(itemsFrom, datasetFrom) : "") + "),1) from sources order by name", null, ids, null, actionSources, actionSourceWithoutActions);
                         actionSources.add(0, getString(R.string.asFunction));
                         ids.add(0, -1);
                         actionSourceWithoutActions.add(0, true);
@@ -521,7 +521,7 @@ public class MainActivity extends AppCompatActivity {
                                 selectedId = id;
                             }
                         });
-                        builder.setPositiveButton(getString(R.string.next), new DialogInterface.OnClickListener() {
+                        builder.setPositiveButton(actionSourceWithoutActions.get(selectedId) ? getString(R.string.insert) : getString(R.string.next), new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 if (actionSourceWithoutActions.get(selectedId)) {
@@ -534,7 +534,7 @@ public class MainActivity extends AppCompatActivity {
                                     }
                                     appActionMode.finish();
                                     db.close();
-                                    displaySection(activity, "SOURCE", idShow, null, newActionId);
+                                    displaySection(activity, "SOURCE", ids.get(selectedId), null, newActionId);
                                 } else {
                                     copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, ids.get(selectedId), "actions", -1);
                                 }
@@ -646,7 +646,7 @@ public class MainActivity extends AppCompatActivity {
                                     if (!moveFlag && actionDestinationEqualsSource) {
                                         // wenn sie in die selbe Quelle kopiert wird,
                                         // muss sie anders benannt werden
-                                        copyRecord(true, context, datasetFrom, itemsFrom, tableFrom, idShow, "label", sortNr);
+                                        copyRecord(false, context, datasetFrom, itemsFrom, tableFrom, idShow, "label", sortNr);
                                         return;
                                     } else if (!actionDestinationEqualsSource) {
                                         // wenn sie in eine andere Quelle kopiert oder verschoben wird,
@@ -686,7 +686,7 @@ public class MainActivity extends AppCompatActivity {
                         final ArrayList<String> stepActions = new ArrayList<>();
                         ids = new ArrayList<>();
                         final ArrayList<Boolean> actionsWithoutSteps = new ArrayList<>();
-                        DatabaseHandler.selectAsList(db, "select id,name,ifnull((select 0 from steps where steps.action_id=actions.id),1) from actions where source_id = ? order by sort_nr", new String[]{Integer.toString(idShow)}, ids, null, stepActions, actionsWithoutSteps);
+                        DatabaseHandler.selectAsList(db, "select id,name,ifnull((select 0 from steps where steps.action_id=actions.id" + (moveFlag ? " and steps.id not in " + getInList(itemsFrom, datasetFrom) : "") + "),1) from actions where source_id = ? order by sort_nr", new String[]{Integer.toString(idShow)}, ids, null, stepActions, actionsWithoutSteps);
 
                         builder = new AlertDialog.Builder(context);
                         builder.setTitle(moveFlag ? getString(R.string.moveStep) : getString(R.string.copyStep));
@@ -702,7 +702,7 @@ public class MainActivity extends AppCompatActivity {
                                 selectedId = id;
                             }
                         });
-                        builder.setPositiveButton(getString(R.string.next), new DialogInterface.OnClickListener() {
+                        builder.setPositiveButton(actionsWithoutSteps.get(selectedId) ? getString(R.string.insert) : getString(R.string.next), new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 if (actionsWithoutSteps.get(selectedId)) {
@@ -818,7 +818,7 @@ public class MainActivity extends AppCompatActivity {
                                 new DialogInterface.OnClickListener() {
                                     public void onClick(DialogInterface dialog, int id) {
                                         int newActionId = DatabaseHandler.getNewId(db, "actions");
-                                        copyAction(db, a.getId(), newActionId, sortNr, DatabaseHandler.getUniqueCopiedActionName(activity, db, input.getText().toString().trim(), sourceId), idShow, true);
+                                        copyAction(db, a.getId(), newActionId, sortNr, DatabaseHandler.getUniqueCopiedActionName(activity, db, input.getText().toString().trim(), sourceId), idShow, false);
                                         appActionMode.finish();
                                         db.close();
                                         displaySection(activity, "SOURCE", idShow, null, newActionId);
@@ -840,6 +840,14 @@ public class MainActivity extends AppCompatActivity {
                         break;
                 }
             }
+        }
+
+        private String getInList(List<Integer> itemsFrom, ArrayList datasetFrom) {
+            String inList = "(";
+            for (int pos : itemsFrom) {
+                inList += ((UniqueRecord) datasetFrom.get(itemsFrom.get(pos))).getId() + ",";
+            }
+            return inList.substring(0, inList.length() - 1) + ")";
         }
 
         private void copyStep(SQLiteDatabase db, int oldId, int newId, int sortNr, String function, boolean callFlag, int parentId, int actionId, boolean moveFlag) {
