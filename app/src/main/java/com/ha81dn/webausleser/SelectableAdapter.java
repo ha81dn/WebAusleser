@@ -60,6 +60,30 @@ public abstract class SelectableAdapter<VH extends RecyclerView.ViewHolder> exte
         }
     }
 
+    public void reorgAfterDismiss(int pos, int size) {
+        for (int i = pos; i < size - 1; i++) {
+            if (selectedItems.get(i + 1))
+                selectedItems.put(i, true);
+            else if (selectedItems.get(i))
+                selectedItems.delete(i);
+        }
+        if (selectedItems.get(size)) selectedItems.delete(size);
+        toggledSelection(pos);
+    }
+
+    public void undoReorgAfterDismiss(int pos, int size, boolean wasSelected) {
+        for (int i = size; i > pos; i--) {
+            if (selectedItems.get(i - 1))
+                selectedItems.put(i, true);
+            else if (selectedItems.get(i))
+                selectedItems.delete(i);
+        }
+        if (wasSelected ^ selectedItems.get(pos))
+            toggleSelection(pos);
+        else
+            toggledSelection(pos);
+    }
+
     public void reorgAfterMove(int from, int to) {
         int i;
         boolean valFrom = selectedItems.get(from, false);

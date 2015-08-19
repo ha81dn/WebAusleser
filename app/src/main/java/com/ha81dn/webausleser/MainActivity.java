@@ -51,11 +51,10 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /* FixMe-Liste
-- onItemDismiss: geswiptes Item war das einzig markierte, danach ActionMode verlassen
 */
 
 /* ToDo-Liste
-- If- und Schleifen-Schachtelei mit Implikationen fürs Browsen, Kopieren etc.
+- If- und Schleifen-Schachtelei mit Implikationen fürs Browsen, Kopieren, Löschen etc.
 - Verschieben und Kopieren asynchron mit ProgressBar-Popup
 - Step-Namen ausbuddeln, sprechend übersetzen
 - Anlegen von Quellen/Aktionen: bei Namensgleichheit meckern
@@ -615,7 +614,7 @@ public class MainActivity extends AppCompatActivity {
                         if (moveFlag && actionDestinationEqualsSource) {
                             // beim Verschieben innerhalb der Kopiequelle spielen die Quellaktionen als Angelpunkt keine Rolle
                             for (int pos : itemsFrom) {
-                                int idx = ids.indexOf(((Action) datasetFrom.get(itemsFrom.get(pos))).getId());
+                                int idx = ids.indexOf(((Action) datasetFrom.get(pos)).getId());
                                 ids.remove(idx);
                                 sortNrs.remove(idx);
                                 actions.remove(idx);
@@ -748,7 +747,7 @@ public class MainActivity extends AppCompatActivity {
                         if (moveFlag && stepDestinationEqualsSource) {
                             // beim Verschieben innerhalb der Kopiequelle spielen die Quellschritte als Angelpunkt keine Rolle
                             for (int pos : itemsFrom) {
-                                int idx = ids.indexOf(((Step) datasetFrom.get(itemsFrom.get(pos))).getId());
+                                int idx = ids.indexOf(((Step) datasetFrom.get(pos)).getId());
                                 ids.remove(idx);
                                 sortNrs.remove(idx);
                                 steps.remove(idx);
@@ -845,7 +844,7 @@ public class MainActivity extends AppCompatActivity {
         private String getInList(List<Integer> itemsFrom, ArrayList datasetFrom) {
             String inList = "(";
             for (int pos : itemsFrom) {
-                inList += ((UniqueRecord) datasetFrom.get(itemsFrom.get(pos))).getId() + ",";
+                inList += ((UniqueRecord) datasetFrom.get(pos)).getId() + ",";
             }
             return inList.substring(0, inList.length() - 1) + ")";
         }
@@ -1416,6 +1415,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemDismiss(final int position) {
                 final int removedId = mDataset.get(position).getId();
+                final boolean wasSelected = isSelected(position);
 
                 DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
                     @Override
@@ -1439,7 +1439,9 @@ public class MainActivity extends AppCompatActivity {
                                         mDataset.add(position, new Action(removedId, c.getInt(0), c.getInt(1), c.getString(2)));
                                     }
                                 }
+                                undoReorgAfterDismiss(position, mDataset.size() - 1, wasSelected);
                                 notifyItemInserted(position);
+
                                 break;
                         }
                         if (c != null) c.close();
@@ -1453,6 +1455,7 @@ public class MainActivity extends AppCompatActivity {
                         .setNegativeButton(getString(R.string.no), dialogClickListener).show();
 
                 mDataset.remove(position);
+                reorgAfterDismiss(position, mDataset.size());
                 notifyItemRemoved(position);
             }
 
@@ -1663,6 +1666,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemDismiss(final int position) {
                 final int removedId = mDataset.get(position).getId();
+                final boolean wasSelected = isSelected(position);
 
                 DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
                     @Override
@@ -1686,6 +1690,7 @@ public class MainActivity extends AppCompatActivity {
                                         mDataset.add(position, new Action(removedId, c.getInt(0), c.getInt(1), c.getString(2)));
                                     }
                                 }
+                                undoReorgAfterDismiss(position, mDataset.size() - 1, wasSelected);
                                 notifyItemInserted(position);
 
                                 break;
@@ -1701,6 +1706,7 @@ public class MainActivity extends AppCompatActivity {
                         .setNegativeButton(getString(R.string.no), dialogClickListener).show();
 
                 mDataset.remove(position);
+                reorgAfterDismiss(position, mDataset.size());
                 notifyItemRemoved(position);
             }
 
@@ -1979,6 +1985,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemDismiss(final int position) {
                 final int removedId = mDataset.get(position).getId();
+                final boolean wasSelected = isSelected(position);
 
                 DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
                     @Override
@@ -2002,7 +2009,9 @@ public class MainActivity extends AppCompatActivity {
                                         mDataset.add(position, new Source(removedId, c.getString(0)));
                                     }
                                 }
+                                undoReorgAfterDismiss(position, mDataset.size() - 1, wasSelected);
                                 notifyItemInserted(position);
+
                                 break;
                         }
                         if (c != null) c.close();
@@ -2015,6 +2024,7 @@ public class MainActivity extends AppCompatActivity {
                         .setPositiveButton(getString(R.string.yes), dialogClickListener)
                         .setNegativeButton(getString(R.string.no), dialogClickListener).show();
 
+                if (getSelectedItems().contains(position)) toggleSelection(position);
                 mDataset.remove(position);
                 notifyItemRemoved(position);
             }
@@ -2195,6 +2205,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemDismiss(final int position) {
                 final int removedId = mDataset.get(position).getId();
+                final boolean wasSelected = isSelected(position);
 
                 DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
                     @Override
@@ -2232,7 +2243,9 @@ public class MainActivity extends AppCompatActivity {
                                         mDataset.add(position, new Step(removedId, c.getInt(0), c.getInt(1), function, tmp, flag, c.getInt(4)));
                                     }
                                 }
+                                undoReorgAfterDismiss(position, mDataset.size() - 1, wasSelected);
                                 notifyItemInserted(position);
+
                                 break;
                         }
                         if (c != null) c.close();
@@ -2246,6 +2259,7 @@ public class MainActivity extends AppCompatActivity {
                         .setNegativeButton(getString(R.string.no), dialogClickListener).show();
 
                 mDataset.remove(position);
+                reorgAfterDismiss(position, mDataset.size());
                 notifyItemRemoved(position);
             }
 
