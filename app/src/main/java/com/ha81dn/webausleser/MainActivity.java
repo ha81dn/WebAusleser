@@ -45,6 +45,7 @@ import com.ha81dn.webausleser.backend.tables.Step;
 import com.ha81dn.webausleser.backend.tables.UniqueRecord;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -2636,7 +2637,6 @@ public class MainActivity extends AppCompatActivity {
             private void createStep(final ArrayList<Param> params) {
                 final Context context = getActivity();
                 final SQLiteDatabase db = DatabaseHandler.getInstance(context).getReadableDatabase();
-                int i;
 
                 DialogInterface.OnClickListener backFromFirstParam = new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
@@ -2670,18 +2670,9 @@ public class MainActivity extends AppCompatActivity {
                     // Auswahl aus integrierten Schritten
 
                     // String-Arrays sortieren
-                    final String steps[] = getResources().getStringArray(R.array.builtInSteps);
                     final String names[] = getResources().getStringArray(R.array.builtInStepsNames);
-                    TreeMap<String, String> stepMap = new TreeMap<>();
-                    for (i = 0; i < steps.length; i++) {
-                        stepMap.put(names[i], steps[i]);
-                    }
-                    i = 0;
-                    for (Map.Entry<String, String> entry : stepMap.entrySet()) {
-                        names[i] = entry.getKey();
-                        steps[i] = entry.getValue();
-                        i++;
-                    }
+                    final String steps[] = getResources().getStringArray(R.array.builtInSteps);
+                    sortDictArray(names, steps);
 
                     showCreateStepWizard(context, getString(R.string.newStep), null, -1, names, null,
                             null,
@@ -2710,9 +2701,11 @@ public class MainActivity extends AppCompatActivity {
                                             context,
                                             db,
                                             params,
+                                            false,
                                             true,
                                             false,
                                             false,
+                                            null,
                                             0,
                                             false,
                                             null,
@@ -2732,8 +2725,10 @@ public class MainActivity extends AppCompatActivity {
                                             db,
                                             params,
                                             false,
+                                            false,
                                             true,
                                             false,
+                                            null,
                                             1,
                                             false,
                                             null,
@@ -2921,11 +2916,78 @@ public class MainActivity extends AppCompatActivity {
                             switch (params.size()) {
                                 case 0:
 
+                                    // if, Operator
+
+                                    final String opNames[] = getResources().getStringArray(R.array.ifOperationsNames);
+                                    final String ops[] = getResources().getStringArray(R.array.ifOperations);
+                                    sortDictArray(opNames, ops);
+
+                                    showCreateStepWizard(context, getString(R.string.newParameter, getString(R.string.ifParam1)), null, -1, opNames, null,
+                                            backFromFirstParam,
+                                            cancelWizard,
+                                            new DialogInterface.OnClickListener() {
+                                                public void onClick(DialogInterface dialog, int id) {
+                                                    if (selectedId >= 0) {
+                                                        params.add(new Param(-1, stepId, 0, ops[selectedId], 0, 0));
+                                                        createStep(params);
+                                                    }
+                                                }
+                                            });
+
                                     break;
 
                                 case 1:
 
+                                    // if, Wert1
+
+                                    createParamByWizard(
+                                            context,
+                                            db,
+                                            params,
+                                            params.get(0).getValue().contains("list"),
+                                            false,
+                                            false,
+                                            false,
+                                            null,
+                                            1,
+                                            false,
+                                            null,
+                                            -1,
+                                            backFromFirstParam,
+                                            backFromFurtherParam,
+                                            backFromInnerDialog,
+                                            cancelWizard);
+
                                     break;
+
+                                case 2:
+
+                                    // if, Wert2
+
+                                    // schon mal die Dann-Sonst-Params dabei tun
+                                    params.add(new Param(-1, stepId, 3, "then", 0, 0));
+                                    params.add(new Param(-1, stepId, 4, "else", 0, 0));
+
+                                    createParamByWizard(
+                                            context,
+                                            db,
+                                            params,
+                                            false,
+                                            true,
+                                            false,
+                                            false,
+                                            null,
+                                            2,
+                                            false,
+                                            null,
+                                            1,
+                                            backFromFirstParam,
+                                            backFromFurtherParam,
+                                            backFromInnerDialog,
+                                            cancelWizard);
+
+                                    break;
+
                             }
                             break;
 
@@ -3179,8 +3241,21 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
 
-            private void getChoosables(ArrayList<String> list, int lstCount[], SQLiteDatabase db, int sourceId, boolean showFixedValue, boolean showNewVariable, boolean showNewList) {
-                ArrayList<String> lst = showNewList ? DatabaseHandler.getListsBySourceId(db, sourceId) : DatabaseHandler.getVariablesBySourceId(db, sourceId);
+            private void sortDictArray(String[] names, String[] steps) {
+                TreeMap<String, String> stepMap = new TreeMap<>();
+                int i;
+                for (i = 0; i < steps.length; i++)
+                    stepMap.put(names[i], steps[i]);
+                i = 0;
+                for (Map.Entry<String, String> entry : stepMap.entrySet()) {
+                    names[i] = entry.getKey();
+                    steps[i] = entry.getValue();
+                    i++;
+                }
+            }
+
+            private void getChoosables(ArrayList<String> list, int lstCount[], SQLiteDatabase db, int sourceId, boolean showLists, boolean showFixedValue, boolean showNewVariable, boolean showNewList) {
+                ArrayList<String> lst = showLists ? DatabaseHandler.getListsBySourceId(db, sourceId) : DatabaseHandler.getVariablesBySourceId(db, sourceId);
                 if (showFixedValue) list.add(getString(R.string.fixedValue));
                 if (showNewVariable) list.add(getString(R.string.newVariable));
                 else if (showNewList) list.add(getString(R.string.newList));
@@ -3191,9 +3266,11 @@ public class MainActivity extends AppCompatActivity {
             private void createParamByWizard(final Context context,
                                              final SQLiteDatabase db,
                                              final ArrayList<Param> params,
+                                             final boolean showLists,
                                              final boolean fixedValue,
                                              final boolean newVariable,
                                              final boolean newList,
+                                             String optionList[],
                                              final int paramIdx,
                                              final boolean numericOnly,
                                              final String singleInputMessage,
@@ -3208,17 +3285,18 @@ public class MainActivity extends AppCompatActivity {
                 final EditText singleInput;
                 final ArrayList<String> lst = new ArrayList<>();
                 final String title = getString(R.string.newParameter, getString(getResources().getIdentifier(stepName + "Param" + cnt[0], "string", getActivity().getPackageName())));
-                String optionList[] = null;
 
-                if (fixedValue || newVariable || newList) {
-                    getChoosables(lst, cnt, db, sourceId, fixedValue, newVariable, newList);
+                if (singleInputMessage != null) {
+                    singleInput = createInput(context, numericOnly);
+                } else if (optionList == null) {
+                    getChoosables(lst, cnt, db, sourceId, showLists, fixedValue, newVariable, newList);
                     optionList = lst.toArray(new String[cnt[0]]);
                     singleInput = null;
-                } else if (singleInputMessage != null) {
-                    singleInput = createInput(context, numericOnly);
                 } else {
+                    lst.addAll(Arrays.asList(optionList));
                     singleInput = null;
                 }
+
                 showCreateStepWizard(context, title, singleInputMessage, finalDialogStartingAtId, optionList, singleInput, paramIdx == 0 ? backFromFirstParam : backFromFurtherParam, cancelWizard,
                         new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int id) {
@@ -3227,7 +3305,10 @@ public class MainActivity extends AppCompatActivity {
                                 final int lstFlag[] = new int[1];
                                 boolean showInnerDialog = false;
                                 if (selectedId >= 0) {
-                                    if (fixedValue || newVariable || newList) {
+                                    if (singleInput != null)
+                                        // einzelne Eingabe
+                                        proceedCreateStep(context, db, params, paramIdx, singleInput.getText().toString().trim(), 0, 0, finalDialogStartingAtId);
+                                    else {
                                         // eine Optionsliste wurde angeboten
                                         if (fixedValue && selectedId == 0) {
                                             // "bestimmter Wert" wurde ausgewählt
@@ -3249,7 +3330,7 @@ public class MainActivity extends AppCompatActivity {
                                             showInnerDialog = true;
                                         } else {
                                             // bekannte Variable/Liste wurde ausgewählt
-                                            proceedCreateStep(context, db, params, paramIdx, lst.get(selectedId), newVariable ? 1 : 0, newList ? 1 : 0, finalDialogStartingAtId);
+                                            proceedCreateStep(context, db, params, paramIdx, lst.get(selectedId), showLists ? 0 : 1, showLists ? 1 : 0, finalDialogStartingAtId);
                                         }
                                         if (showInnerDialog) {
                                             // Eingabedialog für bestimmten Wert bzw. neuen Variablen-/Listennamen zeigen
@@ -3262,12 +3343,7 @@ public class MainActivity extends AppCompatActivity {
                                                     }
                                             );
                                         }
-                                    } else if (singleInput != null) {
-                                        // einzelne Eingabe
-                                        proceedCreateStep(context, db, params, paramIdx, singleInput.getText().toString().trim(), 0, 0, finalDialogStartingAtId);
                                     }
-                                } else {
-                                    createStep(params);
                                 }
                             }
                         });

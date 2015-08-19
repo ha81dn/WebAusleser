@@ -95,6 +95,9 @@
     <string name="replaceParam2">Suche</string>
     <string name="replaceParam3">Ersetze</string>
     <string name="replaceParam4">Ziel</string>
+    <string name="ifParam1">"'Bedingung' - Operator"</string>
+    <string name="ifParam2">"'Bedingung' - Wert 1"</string>
+    <string name="ifParam3">"'Bedingung' - Wert 2"</string>
 
     <string-array name="ifOperations">
         <item>lt</item>
@@ -182,7 +185,7 @@
         <item>Ersetzen (Quelle, Suchen, Ersetzen, Ziel)</item>
         <item>Liste ergänzen (Quelle, Element, Ziel)</item>
         <item>Listenschleife (Liste, Schleifenvariable, Wiederholungsschritte)</item>
-        <item>Bedingung (Wert1, Operator, Wert2, Dann-Schritte, Sonst-Schritte)</item>
+        <item>Bedingung (Operator, Wert 1, Wert 2, Dann-Schritte, Sonst-Schritte)</item>
         <item>Wiederholung (Kopfbedingung, Fußbedingung, Wiederholungsschritte)</item>
         <item>Nummernschleife (Von, Bis, Wiederholungsschritte)</item>
         <item>Splitten (Quelle, Trenner, Ziel)</item>
