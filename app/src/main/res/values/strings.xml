@@ -31,7 +31,7 @@
     <string name="newVariable">(neue Variable)</string>
     <string name="inputNewList">Name der neuen Liste:</string>
     <string name="inputNewVariable">Name der neuen Variablen:</string>
-    <string name="fixedValue">(bestimmter Wert)</string>
+    <string name="fixedValue">(fester Wert)</string>
     <string name="inputFixedValue">Bestimmter Wert:</string>
     <string name="inputName">Name:</string>
     <string name="insert">Einfügen</string>

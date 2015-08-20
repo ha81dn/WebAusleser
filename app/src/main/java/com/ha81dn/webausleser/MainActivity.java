@@ -2278,7 +2278,7 @@ public class MainActivity extends AppCompatActivity {
             public void onReceive(Context context, Intent intent) {
                 String tmp = intent.getStringExtra("TAPITEM");
                 if (tmp != null)
-                    handleTaps(context, tmp, intent.getIntExtra("ID", -1), intent.getStringExtra("NAME"), intent.getIntExtra("FOCUS", -1));
+                    handleTaps(context, tmp, intent.getIntExtra("ID", -1), intent.getStringExtra("NAME"), -1, intent.getIntExtra("FOCUS", -1));
                 else {
                     tmp = intent.getStringExtra("INSERT");
                     //noinspection StatementWithEmptyBody
@@ -2420,7 +2420,7 @@ public class MainActivity extends AppCompatActivity {
                 displaySection(context, section, id, name);
             }
 
-            private void handleTaps(Context context, String section, int id, String name, int focusId) {
+            private void handleTaps(Context context, String section, int id, String name, int parentId, int focusId) {
                 SQLiteDatabase db = DatabaseHandler.getInstance(context).getReadableDatabase();
                 Cursor c;
                 ItemTouchHelper.Callback callback;
@@ -2533,9 +2533,10 @@ public class MainActivity extends AppCompatActivity {
                         } else {
                             ArrayList<Step> stepDataset = new ArrayList<>();
                             Cursor cF;
+                            boolean gotParent = parentId >= 0;
 
                             db = DatabaseHandler.getInstance(context).getReadableDatabase();
-                            c = db.rawQuery("select id, action_id, sort_nr, function, call_flag, parent_id from steps where parent_id = -1 and action_id = ? order by sort_nr", new String[]{Integer.toString(id)});
+                            c = db.rawQuery("select id, action_id, sort_nr, function, call_flag, parent_id from steps where " + (gotParent ? "parent_id = ?" : "parent_id = -1 and action_id = ?") + " order by sort_nr", new String[]{gotParent ? Integer.toString(parentId) : Integer.toString(id)});
                             if (c != null) {
                                 if (c.moveToFirst()) {
                                     do {
@@ -2624,6 +2625,15 @@ public class MainActivity extends AppCompatActivity {
                             setTextViewHTML(navTitle, getString(R.string.paramsFor, stepName) + " (<a href='SRC'>" + sourceName + "</a> / <a href='ACT'>" + actionName + "</a>)");
                             fab.hide();
                             db.close();
+                        }
+                        break;
+                    case "PARAM":
+                        switch (name) {
+                            case "then":
+                            case "else":
+                                // ToDo: handleTaps(...);
+
+                                break;
                         }
                         break;
                 }
