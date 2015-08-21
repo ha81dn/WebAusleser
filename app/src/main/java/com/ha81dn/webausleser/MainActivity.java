@@ -394,7 +394,7 @@ public class MainActivity extends AppCompatActivity {
                 public void onClick(View view) {
                     String url = span.getURL();
                     if (url != null) {
-                        switch (url) {
+                        switch (url.substring(0, 2)) {
                             case "SRC":
                                 MainActivity.displaySection(view.getContext(), "SOURCE", sourceId, sourceName);
                                 break;
@@ -2565,6 +2565,8 @@ public class MainActivity extends AppCompatActivity {
                             touchHelper = new ItemTouchHelper(callback);
                             touchHelper.attachToRecyclerView(mRecyclerView);
                             activeSection = "STEPS";
+                            // ToDo
+                            // das ist hier alles nicht so einfach mit actionId und actionName für den gotParent-Fall !!!
                             actionId = id;
                             if (name == null) {
                                 c = db.rawQuery("select name from actions where id = ?", new String[]{Integer.toString(id)});
@@ -2573,6 +2575,8 @@ public class MainActivity extends AppCompatActivity {
                                     c.close();
                                 }
                             } else actionName = name;
+                            // Todo
+                            // nach gotParent unterscheiden und in jenem Fall die thensFor und elsesFor für den jeweiligen Wenn-Schritt rausfriemeln
                             setTextViewHTML(navTitle, getString(R.string.stepsFor, actionName) + " (<a href='SRC'>" + sourceName + "</a>)");
                             fab.show();
                             db.close();

@@ -4,6 +4,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.support.annotation.StringRes;
 
 import com.ha81dn.webausleser.MainActivity;
 import com.ha81dn.webausleser.R;
@@ -85,36 +86,110 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         return newName;
     }
 
-    public static String getNavTitleHTML(SQLiteDatabase db, String table, int id) {
+    public static String getNavTitleHTML(MainActivity activity, SQLiteDatabase db, String table, int id) {
         Cursor c;
-        String html = "";
-        while (table != null) {
+        String html = null, tmp;
+        int insertPos = 0;
+        boolean first = false;
+        @StringRes int prefix = -1;
+        while (table != null && id >= 0) {
             switch (table) {
                 case "sources":
                     table = null;
                     c = db.rawQuery("select name from sources where id = ?", new String[]{Integer.toString(id)});
+                    if (c != null) {
+                        if (c.moveToFirst()) {
+                            if (html == null) {
+                                html = activity.getString(R.string.actionsFor, c.getString(0)) + " (";
+                                insertPos = html.length() - 1;
+                            } else {
+                                tmp = "<a href='SRC" + id + "'>" + c.getString(0) + "</a>";
+                                if (first)
+                                    tmp += " / ";
+                                else
+                                    first = true;
+                                html = html.substring(0, insertPos) + tmp + html.substring(insertPos + 1);
+                            }
+                        }
+                        c.close();
+                    }
                     break;
                 case "actions":
                     table = null;
                     c = db.rawQuery("select source_id,name from actions where id = ?", new String[]{Integer.toString(id)});
+                    if (c != null) {
+                        if (c.moveToFirst()) {
+                            if (html == null) {
+                                html = activity.getString(R.string.stepsFor, c.getString(1)) + " (";
+                                insertPos = html.length() - 1;
+                            } else {
+                                tmp = "<a href='ACT" + id + "'>" + c.getString(1) + "</a>";
+                                if (first)
+                                    tmp += " / ";
+                                else
+                                    first = true;
+                                html = html.substring(0, insertPos) + tmp + html.substring(insertPos + 1);
+                            }
+                            id = c.getInt(0);
+                            table = "sources";
+                        }
+                        c.close();
+                    }
                     break;
                 case "steps":
                     table = null;
                     c = db.rawQuery("select action_id,function,parent_id from steps where id = ?", new String[]{Integer.toString(id)});
                     if (c != null) {
                         if (c.moveToFirst()) {
-                            html = " (<a href='SRC'>" + "" + "</a> / <a href='ACT'>" + "" + "</a>)" + " / " + html;
+                            if (html == null) {
+                                html = activity.getString(R.string.paramsFor, c.getString(1)) + " (";
+                                insertPos = html.length() - 1;
+                            } else {
+                                tmp = "<a href='STP" + id + "'>" + c.getString(1) + "</a>";
+                                if (first)
+                                    tmp += " / ";
+                                else
+                                    first = true;
+                                if (prefix != -1) {
+                                    tmp = activity.getString(prefix, tmp);
+                                    prefix = -1;
+                                }
+                                html = html.substring(0, insertPos) + tmp + html.substring(insertPos + 1);
+                            }
+                            id = c.getInt(2);
+                            if (id == -1) {
+                                table = "actions";
+                                id = c.getInt(0);
+                            } else
+                                table = "params";
                         }
+                        c.close();
                     }
                     break;
                 case "params":
                     table = null;
                     c = db.rawQuery("select step_id,value from steps where id = ?", new String[]{Integer.toString(id)});
+                    if (c != null) {
+                        if (c.moveToFirst()) {
+                            switch (c.getString(1)) {
+                                case "then":
+                                    prefix = R.string.thensFor;
+                                    break;
+                                case "else":
+                                    prefix = R.string.elsesFor;
+                                    break;
+                            }
+                            id = c.getInt(0);
+                            table = "steps";
+                        }
+                        c.close();
+                    }
                     break;
                 default:
                     table = null;
             }
         }
+        if (html != null) html += ")";
         return html;
     }
 

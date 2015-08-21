@@ -8,6 +8,8 @@
     <string name="actionsFor">Aktionen für %1$s</string>
     <string name="stepsFor">Schritte für %1$s</string>
     <string name="paramsFor">Parameter für %1$s</string>
+    <string name="thensFor">Dann-Schritte für %1$s</string>
+    <string name="elsesFor">Sonst-Schritte für %1$s</string>
     <string name="newFunction">Funktion hinzufügen</string>
     <string name="asFunction">(neue Funktion)</string>
     <string name="toFunction">(in Funktion einfügen)</string>
