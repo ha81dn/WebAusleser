@@ -85,6 +85,39 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         return newName;
     }
 
+    public static String getNavTitleHTML(SQLiteDatabase db, String table, int id) {
+        Cursor c;
+        String html = "";
+        while (table != null) {
+            switch (table) {
+                case "sources":
+                    table = null;
+                    c = db.rawQuery("select name from sources where id = ?", new String[]{Integer.toString(id)});
+                    break;
+                case "actions":
+                    table = null;
+                    c = db.rawQuery("select source_id,name from actions where id = ?", new String[]{Integer.toString(id)});
+                    break;
+                case "steps":
+                    table = null;
+                    c = db.rawQuery("select action_id,function,parent_id from steps where id = ?", new String[]{Integer.toString(id)});
+                    if (c != null) {
+                        if (c.moveToFirst()) {
+                            html = " (<a href='SRC'>" + "" + "</a> / <a href='ACT'>" + "" + "</a>)" + " / " + html;
+                        }
+                    }
+                    break;
+                case "params":
+                    table = null;
+                    c = db.rawQuery("select step_id,value from steps where id = ?", new String[]{Integer.toString(id)});
+                    break;
+                default:
+                    table = null;
+            }
+        }
+        return html;
+    }
+
     public static void selectAsList(SQLiteDatabase db, String query, String[] params, ArrayList<Integer> int1Result, ArrayList<Integer> int2Result, ArrayList<String> strResult, ArrayList<Boolean> blnResult) {
         boolean strFlag = strResult != null;
         boolean int1Flag = int1Result != null;

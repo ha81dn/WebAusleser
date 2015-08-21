@@ -67,6 +67,7 @@ import java.util.TreeMap;
 - Kopfzeile ausbauen (mehrzeilig, Zusatzinfos)
 - Datenbankmodell für Jobs und Meldungen
 - Tabs für Fragment-Wechsel zu Funktionen, Einstellungen und Testcenter
+- History-Back/Forward-Buttons für navTitle
 - Hintergrund beim Swipen andersfarbig
 - Cursor andersfarbig, weil schlecht zu erkennen
 - aussagekräftiges Elementlayout inkl. Bezeichnungen von Kindern
