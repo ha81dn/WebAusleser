@@ -86,7 +86,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         return newName;
     }
 
-    public static String getNavTitleHTML(MainActivity activity, SQLiteDatabase db, String table, int id) {
+    public static String getNavTitleHTML(Context context, SQLiteDatabase db, String table, int id) {
         Cursor c;
         String html = null, tmp;
         int insertPos = 0;
@@ -100,15 +100,15 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                     if (c != null) {
                         if (c.moveToFirst()) {
                             if (html == null) {
-                                html = activity.getString(R.string.actionsFor, c.getString(0)) + " (";
-                                insertPos = html.length() - 1;
+                                html = context.getString(R.string.actionsFor, c.getString(0)) + " (";
+                                insertPos = html.length();
                             } else {
                                 tmp = "<a href='SRC" + id + "'>" + c.getString(0) + "</a>";
                                 if (first)
                                     tmp += " / ";
                                 else
                                     first = true;
-                                html = html.substring(0, insertPos) + tmp + html.substring(insertPos + 1);
+                                html = html.substring(0, insertPos) + tmp + html.substring(insertPos);
                             }
                         }
                         c.close();
@@ -120,15 +120,15 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                     if (c != null) {
                         if (c.moveToFirst()) {
                             if (html == null) {
-                                html = activity.getString(R.string.stepsFor, c.getString(1)) + " (";
-                                insertPos = html.length() - 1;
+                                html = context.getString(R.string.stepsFor, c.getString(1)) + " (";
+                                insertPos = html.length();
                             } else {
                                 tmp = "<a href='ACT" + id + "'>" + c.getString(1) + "</a>";
                                 if (first)
                                     tmp += " / ";
                                 else
                                     first = true;
-                                html = html.substring(0, insertPos) + tmp + html.substring(insertPos + 1);
+                                html = html.substring(0, insertPos) + tmp + html.substring(insertPos);
                             }
                             id = c.getInt(0);
                             table = "sources";
@@ -142,8 +142,8 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                     if (c != null) {
                         if (c.moveToFirst()) {
                             if (html == null) {
-                                html = activity.getString(R.string.paramsFor, c.getString(1)) + " (";
-                                insertPos = html.length() - 1;
+                                html = context.getString(R.string.paramsFor, c.getString(1)) + " (";
+                                insertPos = html.length();
                             } else {
                                 tmp = "<a href='STP" + id + "'>" + c.getString(1) + "</a>";
                                 if (first)
@@ -151,10 +151,10 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                                 else
                                     first = true;
                                 if (prefix != -1) {
-                                    tmp = activity.getString(prefix, tmp);
+                                    tmp = context.getString(prefix, tmp);
                                     prefix = -1;
                                 }
-                                html = html.substring(0, insertPos) + tmp + html.substring(insertPos + 1);
+                                html = html.substring(0, insertPos) + tmp + html.substring(insertPos);
                             }
                             id = c.getInt(2);
                             if (id == -1) {
@@ -168,7 +168,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                     break;
                 case "params":
                     table = null;
-                    c = db.rawQuery("select step_id,value from steps where id = ?", new String[]{Integer.toString(id)});
+                    c = db.rawQuery("select step_id,value from params where id = ?", new String[]{Integer.toString(id)});
                     if (c != null) {
                         if (c.moveToFirst()) {
                             switch (c.getString(1)) {

@@ -2565,19 +2565,17 @@ public class MainActivity extends AppCompatActivity {
                             touchHelper = new ItemTouchHelper(callback);
                             touchHelper.attachToRecyclerView(mRecyclerView);
                             activeSection = "STEPS";
-                            // ToDo
-                            // das ist hier alles nicht so einfach mit actionId und actionName für den gotParent-Fall !!!
-                            actionId = id;
-                            if (name == null) {
-                                c = db.rawQuery("select name from actions where id = ?", new String[]{Integer.toString(id)});
-                                if (c != null) {
-                                    if (c.moveToFirst()) actionName = c.getString(0);
-                                    c.close();
-                                }
-                            } else actionName = name;
-                            // Todo
-                            // nach gotParent unterscheiden und in jenem Fall die thensFor und elsesFor für den jeweiligen Wenn-Schritt rausfriemeln
-                            setTextViewHTML(navTitle, getString(R.string.stepsFor, actionName) + " (<a href='SRC'>" + sourceName + "</a>)");
+                            if (!gotParent) {
+                                actionId = id;
+                                if (name == null) {
+                                    c = db.rawQuery("select name from actions where id = ?", new String[]{Integer.toString(id)});
+                                    if (c != null) {
+                                        if (c.moveToFirst()) actionName = c.getString(0);
+                                        c.close();
+                                    }
+                                } else actionName = name;
+                            }
+                            setTextViewHTML(navTitle, gotParent ? DatabaseHandler.getNavTitleHTML(context, db, "params", parentId) : getString(R.string.stepsFor, actionName) + " (<a href='SRC'>" + sourceName + "</a>)");
                             fab.show();
                             db.close();
                         }
@@ -2627,7 +2625,7 @@ public class MainActivity extends AppCompatActivity {
                                     c.close();
                                 }
                             } else stepName = name;
-                            setTextViewHTML(navTitle, getString(R.string.paramsFor, stepName) + " (<a href='SRC'>" + sourceName + "</a> / <a href='ACT'>" + actionName + "</a>)");
+                            setTextViewHTML(navTitle, DatabaseHandler.getNavTitleHTML(context, db, "steps", id));
                             fab.hide();
                             db.close();
                         }
@@ -2636,8 +2634,7 @@ public class MainActivity extends AppCompatActivity {
                         switch (name) {
                             case "then":
                             case "else":
-                                // ToDo: handleTaps(...);
-
+                                handleTaps(context, "ACTION", -2, null, id, -1);
                                 break;
                         }
                         break;
