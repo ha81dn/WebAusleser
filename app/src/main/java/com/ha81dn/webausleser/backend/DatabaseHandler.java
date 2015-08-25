@@ -142,7 +142,11 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                     if (c != null) {
                         if (c.moveToFirst()) {
                             if (html == null) {
-                                html = context.getString(R.string.paramsFor, c.getString(1)) + " (";
+                                if (prefix != -1) {
+                                    html = context.getString(prefix, c.getString(1)) + " (";
+                                    prefix = -1;
+                                } else
+                                    html = context.getString(R.string.paramsFor, c.getString(1)) + " (";
                                 insertPos = html.length();
                             } else {
                                 tmp = "<a href='STP" + id + "'>" + c.getString(1) + "</a>";
@@ -150,10 +154,6 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                                     tmp += " / ";
                                 else
                                     first = true;
-                                if (prefix != -1) {
-                                    tmp = context.getString(prefix, tmp);
-                                    prefix = -1;
-                                }
                                 html = html.substring(0, insertPos) + tmp + html.substring(insertPos);
                             }
                             id = c.getInt(2);
