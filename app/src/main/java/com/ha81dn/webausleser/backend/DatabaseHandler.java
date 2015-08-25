@@ -150,6 +150,10 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                                 insertPos = html.length();
                             } else {
                                 tmp = "<a href='STP" + id + "'>" + c.getString(1) + "</a>";
+                                if (prefix != -1) {
+                                    tmp = context.getString(prefix, tmp);
+                                    prefix = -1;
+                                }
                                 if (first)
                                     tmp += " / ";
                                 else

@@ -91,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
     private static final long delay = 3000L;
     static String activeSection = "SOURCES";
     static String sourceName, actionName, stepName;
-    static int sourceId, actionId, stepId, selectedId;
+    static int sourceId = -1, actionId = -1, stepId = -1, selectedId = -1, parentId = -1;
     static ActionMode appActionMode = null;
     static ArrayList<Param> insertParams;
     protected MenuItem progressWheel;
@@ -259,6 +259,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         if (appActionMode == null) {
+            // ToDo: back mit parents
             switch (activeSection) {
                 case "SOURCES":
                 case "FUNCTIONS":
@@ -393,6 +394,7 @@ public class MainActivity extends AppCompatActivity {
             ClickableSpan clickable = new ClickableSpan() {
                 public void onClick(View view) {
                     String url = span.getURL();
+                    // ToDo: id ausschnipseln
                     if (url != null) {
                         switch (url.substring(0, 2)) {
                             case "SRC":
@@ -2279,7 +2281,7 @@ public class MainActivity extends AppCompatActivity {
             public void onReceive(Context context, Intent intent) {
                 String tmp = intent.getStringExtra("TAPITEM");
                 if (tmp != null)
-                    handleTaps(context, tmp, intent.getIntExtra("ID", -1), intent.getStringExtra("NAME"), -1, intent.getIntExtra("FOCUS", -1));
+                    handleTaps(context, tmp, intent.getIntExtra("ID", -1), intent.getStringExtra("NAME"), intent.getIntExtra("FOCUS", -1));
                 else {
                     tmp = intent.getStringExtra("INSERT");
                     //noinspection StatementWithEmptyBody
@@ -2382,8 +2384,7 @@ public class MainActivity extends AppCompatActivity {
                         vals.put("sort_nr", ++sort_nr);
                         vals.put("function", name);
                         vals.put("call_flag", 0);   // wird irgendwann natürlich Übergabeparameter
-
-                        vals.put("parent_id", -1);  // wird irgendwann kompliziert
+                        vals.put("parent_id", parentId);
 
                         try {
                             db.insert("steps", null, vals);
@@ -2421,7 +2422,7 @@ public class MainActivity extends AppCompatActivity {
                 displaySection(context, section, id, name);
             }
 
-            private void handleTaps(Context context, String section, int id, String name, int parentId, int focusId) {
+            private void handleTaps(Context context, String section, int id, String name, int focusId) {
                 SQLiteDatabase db = DatabaseHandler.getInstance(context).getReadableDatabase();
                 Cursor c;
                 ItemTouchHelper.Callback callback;
@@ -2634,7 +2635,8 @@ public class MainActivity extends AppCompatActivity {
                         switch (name) {
                             case "then":
                             case "else":
-                                handleTaps(context, "ACTION", -2, null, id, -1);
+                                parentId = id;
+                                handleTaps(context, "ACTION", -2, null, -1);
                                 break;
                         }
                         break;
