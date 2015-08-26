@@ -259,7 +259,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         if (appActionMode == null) {
-            // ToDo: back mit parents
             switch (activeSection) {
                 case "SOURCES":
                 case "FUNCTIONS":
@@ -286,13 +285,12 @@ public class MainActivity extends AppCompatActivity {
                     }
                     break;
                 case "STEPS":
-                    if (parentId == -1)
+                    if (parentId == -1) {
                         displaySection(this, "SOURCE", sourceId, sourceName);
-                    else {
-                        displaySection(this, "STEP", parentId, null);
-                    }
-                    actionId = -1;
-                    actionName = null;
+                        actionId = -1;
+                        actionName = null;
+                    } else
+                        displaySection(this, "STEP", -2, null);
                     break;
                 case "PARAMS":
                     if (parentId == -1)
@@ -2543,7 +2541,7 @@ public class MainActivity extends AppCompatActivity {
                         } else {
                             ArrayList<Step> stepDataset = new ArrayList<>();
                             Cursor cF;
-                            boolean gotParent = parentId >= 0;
+                            boolean gotParent = parentId >= 0 && id == -2;
 
                             db = DatabaseHandler.getInstance(context).getReadableDatabase();
                             c = db.rawQuery("select id, action_id, sort_nr, function, call_flag, parent_id from steps where " + (gotParent ? "parent_id = ?" : "parent_id = -1 and action_id = ?") + " order by sort_nr", new String[]{gotParent ? Integer.toString(parentId) : Integer.toString(id)});
@@ -2596,14 +2594,14 @@ public class MainActivity extends AppCompatActivity {
                             createStep(new ArrayList<Param>());
                         } else {
                             ArrayList<Param> paramDataset = new ArrayList<>();
-                            boolean gotParent = parentId >= 0;
+                            boolean gotParent = parentId >= 0 && id == -2;
 
-                            // ToDo: step_id zur parentId auswühlen und damit als id weitermachen
-                            c = db.rawQuery("select id, step_id, idx, value, variable_flag, list_flag from params where step_id = ? order by idx", new String[]{Integer.toString(id)});
+                            c = db.rawQuery("select id, step_id, idx, value, variable_flag, list_flag from params where step_id = " + (gotParent ? "(select step_id from params where id = ?)" : "?") + " order by idx", new String[]{Integer.toString(gotParent ? parentId : id)});
                             if (c != null) {
                                 if (c.moveToFirst()) {
+                                    id = c.getInt(1);
                                     do {
-                                        paramDataset.add(new Param(c.getInt(0), c.getInt(1), c.getInt(2), c.getString(3), c.getInt(4), c.getInt(5)));
+                                        paramDataset.add(new Param(c.getInt(0), id, c.getInt(2), c.getString(3), c.getInt(4), c.getInt(5)));
                                     } while (c.moveToNext());
                                 }
                                 c.close();
@@ -2636,6 +2634,13 @@ public class MainActivity extends AppCompatActivity {
                                     c.close();
                                 }
                             } else stepName = name;
+                            if (gotParent) {
+                                c = db.rawQuery("select parent_id from steps where id = ?", new String[]{Integer.toString(id)});
+                                if (c != null) {
+                                    if (c.moveToFirst()) parentId = c.getInt(0);
+                                    c.close();
+                                }
+                            }
                             setTextViewHTML(navTitle, DatabaseHandler.getNavTitleHTML(context, db, "steps", id));
                             fab.hide();
                             db.close();
