@@ -276,6 +276,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                     break;
                 case "ACTIONS":
+                    parentId = -1;
                     if (sourceId == -1) {
                         displaySection(this, "FUNCTION", -1, null);
                     } else {
@@ -285,12 +286,19 @@ public class MainActivity extends AppCompatActivity {
                     }
                     break;
                 case "STEPS":
-                    displaySection(this, "SOURCE", sourceId, sourceName);
+                    if (parentId == -1)
+                        displaySection(this, "SOURCE", sourceId, sourceName);
+                    else {
+                        displaySection(this, "STEP", parentId, null);
+                    }
                     actionId = -1;
                     actionName = null;
                     break;
                 case "PARAMS":
-                    displaySection(this, "ACTION", actionId, actionName);
+                    if (parentId == -1)
+                        displaySection(this, "ACTION", actionId, actionName);
+                    else
+                        displaySection(this, "ACTION", -2, null);
                     stepId = -1;
                     stepName = null;
                     break;
@@ -396,7 +404,7 @@ public class MainActivity extends AppCompatActivity {
                     String url = span.getURL();
                     // ToDo: id ausschnipseln
                     if (url != null) {
-                        switch (url.substring(0, 2)) {
+                        switch (url.substring(0, 3)) {
                             case "SRC":
                                 MainActivity.displaySection(view.getContext(), "SOURCE", sourceId, sourceName);
                                 break;
@@ -2588,7 +2596,9 @@ public class MainActivity extends AppCompatActivity {
                             createStep(new ArrayList<Param>());
                         } else {
                             ArrayList<Param> paramDataset = new ArrayList<>();
+                            boolean gotParent = parentId >= 0;
 
+                            // ToDo: step_id zur parentId auswühlen und damit als id weitermachen
                             c = db.rawQuery("select id, step_id, idx, value, variable_flag, list_flag from params where step_id = ? order by idx", new String[]{Integer.toString(id)});
                             if (c != null) {
                                 if (c.moveToFirst()) {
