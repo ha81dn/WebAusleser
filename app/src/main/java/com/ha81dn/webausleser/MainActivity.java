@@ -400,17 +400,22 @@ public class MainActivity extends AppCompatActivity {
             ClickableSpan clickable = new ClickableSpan() {
                 public void onClick(View view) {
                     String url = span.getURL();
-                    // ToDo: id ausschnipseln
                     if (url != null) {
                         switch (url.substring(0, 3)) {
                             case "SRC":
                                 MainActivity.displaySection(view.getContext(), "SOURCE", sourceId, sourceName);
                                 break;
                             case "ACT":
-                                MainActivity.displaySection(view.getContext(), "ACTION", actionId, actionName);
+                                if (url.length() == 3)
+                                    MainActivity.displaySection(view.getContext(), "ACTION", actionId, actionName);
+                                else
+                                    MainActivity.displaySection(view.getContext(), "ACTION", Integer.parseInt(url.substring(3)), null);
                                 break;
                             case "STP":
-                                MainActivity.displaySection(view.getContext(), "STEP", stepId, stepName);
+                                if (url.length() == 3)
+                                    MainActivity.displaySection(view.getContext(), "STEP", stepId, stepName);
+                                else
+                                    MainActivity.displaySection(view.getContext(), "STEP", Integer.parseInt(url.substring(3)), null);
                                 break;
                         }
                     }

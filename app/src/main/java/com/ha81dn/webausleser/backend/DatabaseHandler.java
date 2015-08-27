@@ -143,7 +143,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                         if (c.moveToFirst()) {
                             if (html == null) {
                                 if (prefix != -1) {
-                                    html = context.getString(prefix, c.getString(1)) + " (";
+                                    html = context.getString(prefix, "<a href='STP" + id + "'>" + c.getString(1) + "</a>") + " (";
                                     prefix = -1;
                                 } else
                                     html = context.getString(R.string.paramsFor, c.getString(1)) + " (";
