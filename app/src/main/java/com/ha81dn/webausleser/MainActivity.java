@@ -55,6 +55,14 @@ import java.util.TreeMap;
 */
 
 /* ToDo-Liste
+- beim Verschieben müssen doch eigentlich nur source_id (und/oder action_id oder parent_id) geändert
+  werden, weil ich ja sonst nach dem Kopieren den ganzen alten Quatsch löschen müsste
+- nach dem Löschen von if-artigen-steps (deren params parent_id's sein können) in der Luft hängende
+  steps (mit parent_id, deren params-Referenzen nicht mehr existieren) kontrollieren und löschen
+  (where not exists params.id=steps.parent_id) und das als Schleife so lange, bis keine mehr da
+  sind, weil durch das Löschen in der Luft hängender steps jedes Mal wieder params mitgelöscht
+  werden könnten, die ihrerseits als parent_id dienen und durch ihr Löschen neue Lufthänger
+  produzieren
 - If- und Schleifen-Schachtelei mit Implikationen fürs Browsen, Kopieren, Löschen etc.
 - Verschieben und Kopieren asynchron mit ProgressBar-Popup
 - Step-Namen ausbuddeln, sprechend übersetzen
@@ -75,7 +83,8 @@ import java.util.TreeMap;
   dazu allgemeinen Exception-Ignorierer bauen (vgl. Uniface), den man in den Optionen aber dann doch
   aufplatschmäßig einschalten kann (also als Popup-Exception mit Fehlerbericht-Senden-Option)
 - Testcenter entwickeln
-- Widget entwickeln
+- Widget entwickeln (einfach nur farbig background-gespanter Monospace-Text, schön blockig,
+  bei Antippen Browser evtl. Link selber baubar, aber ohne Foto-Spirenzchen)
 - Import/Export entwickeln
 - ERL Rippelei ordentlich machen
 - ERL normalen onClick() erweitern um intentUpdate
@@ -567,6 +576,7 @@ public class MainActivity extends AppCompatActivity {
 
                         break;
                     case "steps":
+                        // ToDo: in Dann- und Sonst-Schritte von ifs kopieren/verschieben können
                         final ArrayList<String> stepSources = new ArrayList<>();
                         Cursor c;
                         ids = new ArrayList<>();
@@ -831,7 +841,9 @@ public class MainActivity extends AppCompatActivity {
                         builder.setPositiveButton(getString(R.string.ok),
                                 new DialogInterface.OnClickListener() {
                                     public void onClick(DialogInterface dialog, int id) {
-                                        int newActionId = DatabaseHandler.getNewId(db, "actions");
+                                        int newActionId = -1;
+                                        if (!moveFlag)
+                                            newActionId = DatabaseHandler.getNewId(db, "actions");
                                         copyAction(db, a.getId(), newActionId, sortNr, DatabaseHandler.getUniqueCopiedActionName(activity, db, input.getText().toString().trim(), sourceId), idShow, false);
                                         appActionMode.finish();
                                         db.close();
@@ -867,7 +879,10 @@ public class MainActivity extends AppCompatActivity {
         private void copyStep(SQLiteDatabase db, int oldId, int newId, int sortNr, String function, boolean callFlag, int parentId, int actionId, boolean moveFlag) {
             Cursor cS, cP;
             ContentValues vals = new ContentValues();
-            boolean exFlag = false;
+            ArrayList<Step> copyList = new ArrayList<>();
+            ArrayList<Integer> oldList = new ArrayList<>();
+            Step newStep;
+            int newParamId;
 
             // beim Einfügen nachfolgende Sortiernummern inkrementieren
             cS = db.rawQuery("update steps set sort_nr=sort_nr+1 where action_id = ? and parent_id = ? and sort_nr >= ?", new String[]{Integer.toString(actionId), Integer.toString(parentId), Integer.toString(sortNr)});
@@ -876,55 +891,70 @@ public class MainActivity extends AppCompatActivity {
                 cS.close();
             }
 
-            vals.put("id", newId);
-            vals.put("action_id", actionId);
-            vals.put("sort_nr", sortNr);
-            vals.put("function", function);
-            vals.put("call_flag", callFlag ? 1 : 0);
-            vals.put("parent_id", parentId);
-            try {
-                db.insert("steps", null, vals);
-            } catch (Exception ignored) {
-                exFlag = true;
-            }
-
-            // den ganzen abhängigen Tabellenkram nachziehen (insert into actions ...)
-            cP = db.rawQuery("select id, idx, value, variable_flag, list_flag from params where step_id = ?", new String[]{Integer.toString(oldId)});
-            if (cP != null) {
-                if (cP.moveToFirst()) {
-                    do {
-                        int newParamId = DatabaseHandler.getNewId(db, "params");
-                        vals.clear();
-                        vals.put("id", newParamId);
-                        vals.put("step_id", newId);
-                        vals.put("idx", cP.getInt(1));
-                        vals.put("value", cP.getString(2));
-                        vals.put("variable_flag", cP.getInt(3));
-                        vals.put("list_flag", cP.getInt(4));
-                        try {
-                            db.insert("params", null, vals);
-                        } catch (Exception ignored) {
-                            exFlag = true;
-                        }
-                    }
-                    while (cP.moveToNext());
-                }
-                cP.close();
-            }
-
-            if (!exFlag && moveFlag) {
-                cS = db.rawQuery("delete from steps where id = ?", new String[]{Integer.toString(oldId)});
+            if (moveFlag) {
+                cS = db.rawQuery("update steps set action_id = ?,sort_nr = ? where id = ?", new String[]{Integer.toString(actionId), Integer.toString(sortNr), Integer.toString(oldId)});
                 if (cS != null) {
                     cS.moveToFirst();
                     cS.close();
                 }
+            } else {
+                copyList.add(new Step(newId, actionId, sortNr, function, null, callFlag ? 1 : 0, parentId));
+                oldList.add(oldId);
+                newParamId = DatabaseHandler.getNewId(db, "params") - 1;
+                do {
+                    newStep = copyList.get(0);
+                    oldId = oldList.get(0);
+                    copyList.remove(0);
+                    oldList.remove(0);
+
+                    vals.clear();
+                    vals.put("id", newStep.getId());
+                    vals.put("action_id", newStep.getActionId());
+                    vals.put("sort_nr", newStep.getSortNr());
+                    vals.put("function", newStep.getFunction());
+                    vals.put("call_flag", newStep.getCallFlag());
+                    vals.put("parent_id", newStep.getParentId());
+                    db.insert("steps", null, vals);
+
+                    cP = db.rawQuery("select id, idx, value, variable_flag, list_flag from params where step_id = ?", new String[]{Integer.toString(oldId)});
+                    if (cP != null) {
+                        if (cP.moveToFirst()) {
+                            do {
+                                vals.clear();
+                                vals.put("id", ++newParamId);
+                                vals.put("step_id", newStep.getId());
+                                vals.put("idx", cP.getInt(1));
+                                vals.put("value", cP.getString(2));
+                                vals.put("variable_flag", cP.getInt(3));
+                                vals.put("list_flag", cP.getInt(4));
+                                db.insert("params", null, vals);
+
+                                cS = db.rawQuery("select id, action_id, sort_nr, function, call_flag from steps where parent_id = ?", new String[]{Integer.toString(cP.getInt(0))});
+                                if (cS != null) {
+                                    if (cS.moveToFirst()) {
+                                        do {
+                                            copyList.add(new Step(newId++, newStep.getActionId(), cS.getInt(2), cS.getString(3), null, cS.getInt(4), newParamId));
+                                            oldList.add(cS.getInt(0));
+                                        }
+                                        while (cS.moveToNext());
+                                    }
+                                    cS.close();
+                                }
+                            }
+                            while (cP.moveToNext());
+                        }
+                        cP.close();
+                    }
+                } while (copyList.size() >= 1);
             }
         }
 
         private void copyAction(SQLiteDatabase db, int oldId, int newId, int sortNr, String name, int sourceId, boolean moveFlag) {
             Cursor cA, cS, cP;
             ContentValues vals = new ContentValues();
-            boolean exFlag = false;
+            ArrayList<Step> copyList = new ArrayList<>();
+            ArrayList<Integer> oldList = new ArrayList<>();
+            Step newStep;
 
             // beim Einfügen nachfolgende Sortiernummern inkrementieren
             cA = db.rawQuery("update actions set sort_nr=sort_nr+1 where source_id = ? and sort_nr >= ?", new String[]{Integer.toString(sourceId), Integer.toString(sortNr)});
@@ -933,138 +963,163 @@ public class MainActivity extends AppCompatActivity {
                 cA.close();
             }
 
-            vals.put("id", newId);
-            vals.put("source_id", sourceId);
-            vals.put("sort_nr", sortNr);
-            vals.put("name", name);
-            try {
-                db.insert("actions", null, vals);
-            } catch (Exception ignored) {
-                exFlag = true;
-            }
-
-            // den ganzen abhängigen Tabellenkram nachziehen (insert into actions ...)
-            cS = db.rawQuery("select id, sort_nr, function, call_flag, parent_id from steps where action_id = ?", new String[]{Integer.toString(oldId)});
-            if (cS != null) {
-                if (cS.moveToFirst()) {
-                    do {
-                        int newStepId = DatabaseHandler.getNewId(db, "steps");
-                        vals.clear();
-                        vals.put("id", newStepId);
-                        vals.put("action_id", newId);
-                        vals.put("sort_nr", cS.getInt(1));
-                        vals.put("function", cS.getString(2));
-                        vals.put("call_flag", cS.getInt(3));
-                        vals.put("parent_id", cS.getInt(4));
-                        try {
-                            db.insert("steps", null, vals);
-                        } catch (Exception ignored) {
-                            exFlag = true;
-                        }
-
-                        cP = db.rawQuery("select id, idx, value, variable_flag, list_flag from params where step_id = ?", new String[]{Integer.toString(cS.getInt(0))});
-                        if (cP != null) {
-                            if (cP.moveToFirst()) {
-                                do {
-                                    int newParamId = DatabaseHandler.getNewId(db, "params");
-                                    vals.clear();
-                                    vals.put("id", newParamId);
-                                    vals.put("step_id", newStepId);
-                                    vals.put("idx", cP.getInt(1));
-                                    vals.put("value", cP.getString(2));
-                                    vals.put("variable_flag", cP.getInt(3));
-                                    vals.put("list_flag", cP.getInt(4));
-                                    try {
-                                        db.insert("params", null, vals);
-                                    } catch (Exception ignored) {
-                                        exFlag = true;
-                                    }
-                                }
-                                while (cP.moveToNext());
-                            }
-                            cP.close();
-                        }
-                    } while (cS.moveToNext());
-                }
-                cS.close();
-            }
-            if (!exFlag && moveFlag) {
-                cA = db.rawQuery("delete from actions where id = ?", new String[]{Integer.toString(oldId)});
+            if (moveFlag) {
+                cA = db.rawQuery("update actions set source_id = ?,sort_nr = ? where id = ?", new String[]{Integer.toString(sourceId), Integer.toString(sortNr), Integer.toString(oldId)});
                 if (cA != null) {
                     cA.moveToFirst();
                     cA.close();
                 }
+            } else {
+                vals.put("id", newId);
+                vals.put("source_id", sourceId);
+                vals.put("sort_nr", sortNr);
+                vals.put("name", name);
+                db.insert("actions", null, vals);
+
+                // den ganzen abhängigen Tabellenkram nachziehen
+                int newStepId = DatabaseHandler.getNewId(db, "steps");
+                cS = db.rawQuery("select id, sort_nr, function, call_flag from steps where parent_id = -1 and action_id = ?", new String[]{Integer.toString(oldId)});
+                if (cS != null) {
+                    if (cS.moveToFirst()) {
+                        do {
+                            copyList.add(new Step(newStepId++, newId, cS.getInt(1), cS.getString(2), null, cS.getInt(3), -1));
+                            oldList.add(cS.getInt(0));
+                        } while (cS.moveToNext());
+                    }
+                    cS.close();
+                }
+
+                int newParamId = DatabaseHandler.getNewId(db, "params") - 1;
+                while (copyList.size() >= 1) {
+                    newStep = copyList.get(0);
+                    oldId = oldList.get(0);
+                    copyList.remove(0);
+                    oldList.remove(0);
+
+                    vals.clear();
+                    vals.put("id", newStep.getId());
+                    vals.put("action_id", newStep.getActionId());
+                    vals.put("sort_nr", newStep.getSortNr());
+                    vals.put("function", newStep.getFunction());
+                    vals.put("call_flag", newStep.getCallFlag());
+                    vals.put("parent_id", newStep.getParentId());
+                    db.insert("steps", null, vals);
+
+                    cP = db.rawQuery("select id, idx, value, variable_flag, list_flag from params where step_id = ?", new String[]{Integer.toString(oldId)});
+                    if (cP != null) {
+                        if (cP.moveToFirst()) {
+                            do {
+                                vals.clear();
+                                vals.put("id", ++newParamId);
+                                vals.put("step_id", newStep.getId());
+                                vals.put("idx", cP.getInt(1));
+                                vals.put("value", cP.getString(2));
+                                vals.put("variable_flag", cP.getInt(3));
+                                vals.put("list_flag", cP.getInt(4));
+                                db.insert("params", null, vals);
+
+                                cS = db.rawQuery("select id, action_id, sort_nr, function, call_flag from steps where parent_id = ?", new String[]{Integer.toString(cP.getInt(0))});
+                                if (cS != null) {
+                                    if (cS.moveToFirst()) {
+                                        do {
+                                            copyList.add(new Step(newStepId++, newStep.getActionId(), cS.getInt(2), cS.getString(3), null, cS.getInt(4), newParamId));
+                                            oldList.add(cS.getInt(0));
+                                        }
+                                        while (cS.moveToNext());
+                                    }
+                                    cS.close();
+                                }
+                            }
+                            while (cP.moveToNext());
+                        }
+                        cP.close();
+                    }
+                }
             }
+
         }
 
         private void copySource(SQLiteDatabase db, int oldId, int newId, String name) {
             Cursor cA, cS, cP;
             ContentValues vals = new ContentValues();
+            ArrayList<Step> copyList = new ArrayList<>();
+            ArrayList<Integer> oldList = new ArrayList<>();
+            Step newStep;
 
             vals.put("id", newId);
             vals.put("name", name);
-            try {
-                db.insert("sources", null, vals);
-            } catch (Exception ignored) {
-            }
+            db.insert("sources", null, vals);
 
-            // den ganzen abhängigen Tabellenkram nachziehen (insert into actions ...)
+            // den ganzen abhängigen Tabellenkram nachziehen
             cA = db.rawQuery("select id, sort_nr, name from actions where source_id = ?", new String[]{Integer.toString(oldId)});
             if (cA != null) {
                 if (cA.moveToFirst()) {
+                    int newActionId = DatabaseHandler.getNewId(db, "actions") - 1;
+                    int newParamId = DatabaseHandler.getNewId(db, "params") - 1;
+                    int newStepId = DatabaseHandler.getNewId(db, "steps");
                     do {
-                        int newActionId = DatabaseHandler.getNewId(db, "actions");
                         vals.clear();
-                        vals.put("id", newActionId);
+                        vals.put("id", ++newActionId);
                         vals.put("source_id", newId);
                         vals.put("sort_nr", cA.getInt(1));
                         vals.put("name", cA.getString(2));
-                        try {
-                            db.insert("actions", null, vals);
-                        } catch (Exception ignored) {
-                        }
+                        db.insert("actions", null, vals);
 
-                        cS = db.rawQuery("select id, sort_nr, function, call_flag, parent_id from steps where action_id = ?", new String[]{Integer.toString(cA.getInt(0))});
+                        cS = db.rawQuery("select id, sort_nr, function, call_flag from steps where parent_id = -1 and action_id = ?", new String[]{Integer.toString(cA.getInt(0))});
                         if (cS != null) {
                             if (cS.moveToFirst()) {
                                 do {
-                                    int newStepId = DatabaseHandler.getNewId(db, "steps");
-                                    vals.clear();
-                                    vals.put("id", newStepId);
-                                    vals.put("action_id", newActionId);
-                                    vals.put("sort_nr", cS.getInt(1));
-                                    vals.put("function", cS.getString(2));
-                                    vals.put("call_flag", cS.getInt(3));
-                                    vals.put("parent_id", cS.getInt(4));
-                                    try {
-                                        db.insert("steps", null, vals);
-                                    } catch (Exception ignored) {
-                                    }
-
-                                    cP = db.rawQuery("select id, idx, value, variable_flag, list_flag from params where step_id = ?", new String[]{Integer.toString(cS.getInt(0))});
-                                    if (cP != null) {
-                                        if (cP.moveToFirst()) {
-                                            do {
-                                                int newParamId = DatabaseHandler.getNewId(db, "params");
-                                                vals.clear();
-                                                vals.put("id", newParamId);
-                                                vals.put("step_id", newStepId);
-                                                vals.put("idx", cP.getInt(1));
-                                                vals.put("value", cP.getString(2));
-                                                vals.put("variable_flag", cP.getInt(3));
-                                                vals.put("list_flag", cP.getInt(4));
-                                                try {
-                                                    db.insert("params", null, vals);
-                                                } catch (Exception ignored) {
-                                                }
-                                            }
-                                            while (cP.moveToNext());
-                                        }
-                                        cP.close();
-                                    }
+                                    copyList.add(new Step(newStepId++, newActionId, cS.getInt(1), cS.getString(2), null, cS.getInt(3), -1));
+                                    oldList.add(cS.getInt(0));
                                 } while (cS.moveToNext());
                             }
                             cS.close();
+                        }
+
+                        while (copyList.size() >= 1) {
+                            newStep = copyList.get(0);
+                            oldId = oldList.get(0);
+                            copyList.remove(0);
+                            oldList.remove(0);
+
+                            vals.clear();
+                            vals.put("id", newStep.getId());
+                            vals.put("action_id", newStep.getActionId());
+                            vals.put("sort_nr", newStep.getSortNr());
+                            vals.put("function", newStep.getFunction());
+                            vals.put("call_flag", newStep.getCallFlag());
+                            vals.put("parent_id", newStep.getParentId());
+                            db.insert("steps", null, vals);
+
+                            cP = db.rawQuery("select id, idx, value, variable_flag, list_flag from params where step_id = ?", new String[]{Integer.toString(oldId)});
+                            if (cP != null) {
+                                if (cP.moveToFirst()) {
+                                    do {
+                                        vals.clear();
+                                        vals.put("id", ++newParamId);
+                                        vals.put("step_id", newStep.getId());
+                                        vals.put("idx", cP.getInt(1));
+                                        vals.put("value", cP.getString(2));
+                                        vals.put("variable_flag", cP.getInt(3));
+                                        vals.put("list_flag", cP.getInt(4));
+                                        db.insert("params", null, vals);
+
+                                        cS = db.rawQuery("select id, action_id, sort_nr, function, call_flag from steps where parent_id = ?", new String[]{Integer.toString(cP.getInt(0))});
+                                        if (cS != null) {
+                                            if (cS.moveToFirst()) {
+                                                do {
+                                                    copyList.add(new Step(newStepId++, newStep.getActionId(), cS.getInt(2), cS.getString(3), null, cS.getInt(4), newParamId));
+                                                    oldList.add(cS.getInt(0));
+                                                }
+                                                while (cS.moveToNext());
+                                            }
+                                            cS.close();
+                                        }
+                                    }
+                                    while (cP.moveToNext());
+                                }
+                                cP.close();
+                            }
                         }
                     } while (cA.moveToNext());
                 }
