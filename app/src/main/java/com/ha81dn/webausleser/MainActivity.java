@@ -576,7 +576,6 @@ public class MainActivity extends AppCompatActivity {
 
                         break;
                     case "steps":
-                        // ToDo: in Dann- und Sonst-Schritte von ifs kopieren/verschieben können
                         final ArrayList<String> stepSources = new ArrayList<>();
                         Cursor c;
                         ids = new ArrayList<>();
@@ -766,9 +765,11 @@ public class MainActivity extends AppCompatActivity {
                         final ArrayList<String> steps = new ArrayList<>();
                         ids = new ArrayList<>();
                         sortNrs = new ArrayList<>();
+                        ArrayList<Boolean> stepHasParentalParams = new ArrayList<>();
+                        ArrayList<String> stepParams = new ArrayList<>();
                         final boolean stepDestinationEqualsSource = ((Step) datasetFrom.get(itemsFrom.get(0))).getActionId() == idShow;
 
-                        DatabaseHandler.selectAsList(db, "select id,sort_nr,function from steps where action_id = ? order by sort_nr", new String[]{Integer.toString(idShow)}, ids, sortNrs, steps, null);
+                        DatabaseHandler.selectAsList(db, "select id,sort_nr,function,ifnull((select 1 from params where params.step_id=a.id and exists (select null from steps b where b.parent_id=params.id)),0) from steps a where a.action_id = ? order by sort_nr", new String[]{Integer.toString(idShow)}, ids, sortNrs, steps, stepHasParentalParams);
                         if (moveFlag && stepDestinationEqualsSource) {
                             // beim Verschieben innerhalb der Kopiequelle spielen die Quellschritte als Angelpunkt keine Rolle
                             for (int pos : itemsFrom) {
@@ -781,6 +782,24 @@ public class MainActivity extends AppCompatActivity {
                         steps.add(getString(R.string.insertLast));
                         ids.add(-1);
                         sortNrs.add(sortNrs.get(sortNrs.size() - 1) + 1);
+
+                        // ToDo: in Dann- und Sonst-Schritte von ifs kopieren/verschieben können
+                        for (int i = 0; i < ids.size(); i++) {
+                            if (stepHasParentalParams.get(i)) {
+                                DatabaseHandler.selectAsList(db, "select value from params where step_id = ? and exists (select null from steps where steps.parent_id=params.id) order by idx", new String[]{Integer.toString(ids.get(i))}, null, null, stepParams, null);
+                                // hier stehen in stepParams so Dinge wie "then" und "else",
+                                // muss man nur noch übersetzen und in ids/sortNrs/steps
+                                // einsortieren, am besten mit ids-Wert -1, um beim Anklicken
+                                // eines SingleChoiceItems zu wissen, ob Weiter oder Fertig stellen
+
+                                // und dann geht's bei Weiter später noch mal so richtig ans
+                                // Eingemachte; da muss natürlich auch die nächsttiefere Step-Ebene
+                                // auswahltechnisch durchlaufen werden (parent_id übergeben)
+
+                                // und dann noch die Back-Buttons... na, viel Spaß!
+                            }
+                        }
+
 
                         builder = new AlertDialog.Builder(context);
                         builder.setTitle(moveFlag ? getString(R.string.moveStep) : getString(R.string.copyStep));
