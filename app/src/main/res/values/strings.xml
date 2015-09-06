@@ -198,6 +198,7 @@
         <item>Länge (Quelle, Ziel)</item>
         <item>Rückwärtssuche (Quelle, Startposition, Suchtext, Ziel)</item>
         <item>Get-Download (URL, Modus, Ziel)</item>
+        <!-- Modus: ob full oder thin client -->
         <item>Post-Download (URL, Modus, Ziel)</item>
         <item>Javascript-Befehl (Befehl, Ziel)</item>
         <item>Meldung (Betreff, Inhalt, Bild, Link)</item>

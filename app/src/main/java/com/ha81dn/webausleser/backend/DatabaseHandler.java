@@ -294,7 +294,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         db.execSQL("create table if not exists sources (id integer primary key, name text collate nocase)");
         db.execSQL("create table if not exists actions (id integer primary key, source_id integer references sources(id) on delete cascade, sort_nr integer, name text collate nocase)");
         db.execSQL("create table if not exists steps (id integer primary key, action_id integer references actions(id) on delete cascade, sort_nr integer, function text, call_flag integer, parent_id integer)");
-        db.execSQL("create table if not exists params (id integer primary key, step_id integer references steps(id) on delete cascade, idx integer, value text, variable_flag integer, list_flag integer)");
+        db.execSQL("create table if not exists params (id integer primary key, step_id integer references steps(id) on delete cascade, idx integer, value text, variable_flag integer, list_flag integer, parental_flag integer)");
     }
 
     @Override

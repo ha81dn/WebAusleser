@@ -410,6 +410,7 @@ public class MainActivity extends AppCompatActivity {
                 public void onClick(View view) {
                     String url = span.getURL();
                     if (url != null) {
+                        // ToDo: parentId-Beachtung bei ebenenübergreifenden Sprüngen
                         switch (url.substring(0, 3)) {
                             case "SRC":
                                 MainActivity.displaySection(view.getContext(), "SOURCE", sourceId, sourceName);
@@ -452,7 +453,8 @@ public class MainActivity extends AppCompatActivity {
                                   final String tableFrom,
                                   final int idShow,
                                   final String tableShow,
-                                  final int sortNr) {
+                                  final int sortNr,
+                                  final int parentId) {
             final MainActivity activity = (MainActivity) getActivity();
             final SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
             final ArrayList<Integer> ids;
@@ -558,9 +560,8 @@ public class MainActivity extends AppCompatActivity {
                                     appActionMode.finish();
                                     db.close();
                                     displaySection(activity, "SOURCE", ids.get(selectedId), null, newActionId);
-                                } else {
-                                    copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, ids.get(selectedId), "actions", -1);
-                                }
+                                } else
+                                    copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, ids.get(selectedId), "actions", -1, -1);
                             }
                         });
                         builder.setNegativeButton(getString(R.string.cancel),
@@ -608,7 +609,7 @@ public class MainActivity extends AppCompatActivity {
                         builder.setPositiveButton(getString(R.string.next), new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, ids.get(selectedId), "actions", -1);
+                                copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, ids.get(selectedId), "actions", -1, -1);
                             }
                         });
                         builder.setNegativeButton(getString(R.string.cancel),
@@ -669,14 +670,14 @@ public class MainActivity extends AppCompatActivity {
                                     if (!moveFlag && actionDestinationEqualsSource) {
                                         // wenn sie in die selbe Quelle kopiert wird,
                                         // muss sie anders benannt werden
-                                        copyRecord(false, context, datasetFrom, itemsFrom, tableFrom, idShow, "label", sortNr);
+                                        copyRecord(false, context, datasetFrom, itemsFrom, tableFrom, idShow, "label", sortNr, -1);
                                         return;
                                     } else if (!actionDestinationEqualsSource) {
                                         // wenn sie in eine andere Quelle kopiert oder verschoben wird,
                                         // muss sie bei Namenskollision anders benannt werden
                                         a = (Action) datasetFrom.get(itemsFrom.get(0));
                                         if (!a.getName().equals(DatabaseHandler.getUniqueCopiedActionName(activity, db, a.getName(), idShow))) {
-                                            copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, idShow, "label", sortNr);
+                                            copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, idShow, "label", sortNr, -1);
                                             return;
                                         }
                                     }
@@ -739,9 +740,8 @@ public class MainActivity extends AppCompatActivity {
                                     appActionMode.finish();
                                     db.close();
                                     displaySection(activity, "ACTION", ids.get(selectedId), null, newStepId);
-                                } else {
-                                    copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, ids.get(selectedId), "steps", -1);
-                                }
+                                } else
+                                    copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, ids.get(selectedId), "steps", -1, -1);
                             }
                         });
                         builder.setNegativeButton(getString(R.string.cancel),
@@ -766,10 +766,12 @@ public class MainActivity extends AppCompatActivity {
                         ids = new ArrayList<>();
                         sortNrs = new ArrayList<>();
                         ArrayList<Boolean> stepHasParentalParams = new ArrayList<>();
+                        ArrayList<Boolean> paramIsParent = new ArrayList<>();
+                        ArrayList<Integer> paramIds = new ArrayList<>();
                         ArrayList<String> stepParams = new ArrayList<>();
                         final boolean stepDestinationEqualsSource = ((Step) datasetFrom.get(itemsFrom.get(0))).getActionId() == idShow;
 
-                        DatabaseHandler.selectAsList(db, "select id,sort_nr,function,ifnull((select 1 from params where params.step_id=a.id and exists (select null from steps b where b.parent_id=params.id)),0) from steps a where a.action_id = ? order by sort_nr", new String[]{Integer.toString(idShow)}, ids, sortNrs, steps, stepHasParentalParams);
+                        DatabaseHandler.selectAsList(db, "select id,sort_nr,function,ifnull((select 1 from params where params.step_id=a.id and params.parental_flag=1 limit 1),0) from steps a where a.action_id = ? and a.parent_id = ? order by sort_nr", new String[]{Integer.toString(idShow), Integer.toString(parentId)}, ids, sortNrs, steps, stepHasParentalParams);
                         if (moveFlag && stepDestinationEqualsSource) {
                             // beim Verschieben innerhalb der Kopiequelle spielen die Quellschritte als Angelpunkt keine Rolle
                             for (int pos : itemsFrom) {
@@ -777,29 +779,27 @@ public class MainActivity extends AppCompatActivity {
                                 ids.remove(idx);
                                 sortNrs.remove(idx);
                                 steps.remove(idx);
+                                stepHasParentalParams.remove(idx);
                             }
                         }
                         steps.add(getString(R.string.insertLast));
                         ids.add(-1);
                         sortNrs.add(sortNrs.get(sortNrs.size() - 1) + 1);
+                        stepHasParentalParams.add(false);
 
-                        // ToDo: in Dann- und Sonst-Schritte von ifs kopieren/verschieben können
                         for (int i = 0; i < ids.size(); i++) {
                             if (stepHasParentalParams.get(i)) {
-                                DatabaseHandler.selectAsList(db, "select value from params where step_id = ? and exists (select null from steps where steps.parent_id=params.id) order by idx", new String[]{Integer.toString(ids.get(i))}, null, null, stepParams, null);
-                                // hier stehen in stepParams so Dinge wie "then" und "else",
-                                // muss man nur noch übersetzen und in ids/sortNrs/steps
-                                // einsortieren, am besten mit ids-Wert -1, um beim Anklicken
-                                // eines SingleChoiceItems zu wissen, ob Weiter oder Fertig stellen
-
-                                // und dann geht's bei Weiter später noch mal so richtig ans
-                                // Eingemachte; da muss natürlich auch die nächsttiefere Step-Ebene
-                                // auswahltechnisch durchlaufen werden (parent_id übergeben)
-
-                                // und dann noch die Back-Buttons... na, viel Spaß!
+                                // bei elterlichen Params klären, ob's Kinder gibt
+                                selectedId = ids.get(i);
+                                DatabaseHandler.selectAsList(db, "select id,value,ifnull((select 1 from steps where steps.parent_id=a.id limit 1),0) from params a where a.step_id = ? and a.parental_flag = 1 order by idx", new String[]{Integer.toString(selectedId)}, paramIds, null, stepParams, paramIsParent);
+                                for (int j = 0; j < stepParams.size(); j++) {
+                                    steps.add(++i, stepParams.get(j));
+                                    ids.add(i, paramIds.get(j));
+                                    sortNrs.add(i, paramIsParent.get(j) ? -2 : -1);
+                                    stepHasParentalParams.add(i, false);
+                                }
                             }
                         }
-
 
                         builder = new AlertDialog.Builder(context);
                         builder.setTitle(moveFlag ? getString(R.string.moveStep) : getString(R.string.copyStep));
@@ -807,24 +807,33 @@ public class MainActivity extends AppCompatActivity {
                         builder.setSingleChoiceItems(steps.toArray(new String[steps.size()]), selectedId, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int id) {
+                                Button posButton = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
+                                selectedId = sortNrs.get(id);
+                                if (selectedId >= -1)
+                                    posButton.setText(getString(R.string.insert));
+                                else
+                                    posButton.setText(getString(R.string.next));
                                 selectedId = id;
                             }
                         });
-                        builder.setPositiveButton(getString(R.string.next), new DialogInterface.OnClickListener() {
+                        builder.setPositiveButton(getString(R.string.insert), new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                Step s;
-                                int sortNr = sortNrs.get(selectedId);
-                                int newStepId = -1;
+                                if (sortNrs.get(selectedId) >= -1) {
+                                    Step s;
+                                    int sortNr = sortNrs.get(selectedId);
+                                    int newStepId = -1;
 
-                                for (int pos : itemsFrom) {
-                                    s = (Step) datasetFrom.get(pos);
-                                    newStepId = DatabaseHandler.getNewId(db, "steps");
-                                    copyStep(db, s.getId(), newStepId, sortNr++, s.getName(), s.getCallFlag(), -1, idShow, moveFlag);
-                                }
-                                appActionMode.finish();
-                                db.close();
-                                displaySection(activity, "ACTION", idShow, null, newStepId);
+                                    for (int pos : itemsFrom) {
+                                        s = (Step) datasetFrom.get(pos);
+                                        newStepId = DatabaseHandler.getNewId(db, "steps");
+                                        copyStep(db, s.getId(), newStepId, sortNr++, s.getName(), s.getCallFlag(), -1, idShow, moveFlag);
+                                    }
+                                    appActionMode.finish();
+                                    db.close();
+                                    displaySection(activity, "ACTION", idShow, null, newStepId);
+                                } else
+                                    copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, idShow, "steps", -1, ids.get(selectedId));
                             }
                         });
                         builder.setNegativeButton(getString(R.string.cancel),
@@ -935,7 +944,7 @@ public class MainActivity extends AppCompatActivity {
                     vals.put("parent_id", newStep.getParentId());
                     db.insert("steps", null, vals);
 
-                    cP = db.rawQuery("select id, idx, value, variable_flag, list_flag from params where step_id = ?", new String[]{Integer.toString(oldId)});
+                    cP = db.rawQuery("select id, idx, value, variable_flag, list_flag, parental_flag from params where step_id = ?", new String[]{Integer.toString(oldId)});
                     if (cP != null) {
                         if (cP.moveToFirst()) {
                             do {
@@ -946,6 +955,7 @@ public class MainActivity extends AppCompatActivity {
                                 vals.put("value", cP.getString(2));
                                 vals.put("variable_flag", cP.getInt(3));
                                 vals.put("list_flag", cP.getInt(4));
+                                vals.put("parental_flag", cP.getInt(5));
                                 db.insert("params", null, vals);
 
                                 cS = db.rawQuery("select id, action_id, sort_nr, function, call_flag from steps where parent_id = ?", new String[]{Integer.toString(cP.getInt(0))});
@@ -1024,7 +1034,7 @@ public class MainActivity extends AppCompatActivity {
                     vals.put("parent_id", newStep.getParentId());
                     db.insert("steps", null, vals);
 
-                    cP = db.rawQuery("select id, idx, value, variable_flag, list_flag from params where step_id = ?", new String[]{Integer.toString(oldId)});
+                    cP = db.rawQuery("select id, idx, value, variable_flag, list_flag, parental_flag from params where step_id = ?", new String[]{Integer.toString(oldId)});
                     if (cP != null) {
                         if (cP.moveToFirst()) {
                             do {
@@ -1035,6 +1045,7 @@ public class MainActivity extends AppCompatActivity {
                                 vals.put("value", cP.getString(2));
                                 vals.put("variable_flag", cP.getInt(3));
                                 vals.put("list_flag", cP.getInt(4));
+                                vals.put("parental_flag", cP.getInt(5));
                                 db.insert("params", null, vals);
 
                                 cS = db.rawQuery("select id, action_id, sort_nr, function, call_flag from steps where parent_id = ?", new String[]{Integer.toString(cP.getInt(0))});
@@ -1110,7 +1121,7 @@ public class MainActivity extends AppCompatActivity {
                             vals.put("parent_id", newStep.getParentId());
                             db.insert("steps", null, vals);
 
-                            cP = db.rawQuery("select id, idx, value, variable_flag, list_flag from params where step_id = ?", new String[]{Integer.toString(oldId)});
+                            cP = db.rawQuery("select id, idx, value, variable_flag, list_flag, parental_flag from params where step_id = ?", new String[]{Integer.toString(oldId)});
                             if (cP != null) {
                                 if (cP.moveToFirst()) {
                                     do {
@@ -1121,6 +1132,7 @@ public class MainActivity extends AppCompatActivity {
                                         vals.put("value", cP.getString(2));
                                         vals.put("variable_flag", cP.getInt(3));
                                         vals.put("list_flag", cP.getInt(4));
+                                        vals.put("parental_flag", cP.getInt(5));
                                         db.insert("params", null, vals);
 
                                         cS = db.rawQuery("select id, action_id, sort_nr, function, call_flag from steps where parent_id = ?", new String[]{Integer.toString(cP.getInt(0))});
@@ -1446,12 +1458,12 @@ public class MainActivity extends AppCompatActivity {
                         return true;
 
                     case R.id.menu_item_copy:
-                        copyRecord(false, context, mDataset, getSelectedItems(), "actions", -1, null, -1);
+                        copyRecord(false, context, mDataset, getSelectedItems(), "actions", -1, null, -1, -1);
 
                         return true;
 
                     case R.id.menu_item_move:
-                        copyRecord(true, context, mDataset, getSelectedItems(), "actions", -1, null, -1);
+                        copyRecord(true, context, mDataset, getSelectedItems(), "actions", -1, null, -1, -1);
 
                         return true;
 
@@ -2021,7 +2033,7 @@ public class MainActivity extends AppCompatActivity {
                         return true;
 
                     case R.id.menu_item_copy:
-                        copyRecord(false, context, mDataset, getSelectedItems(), "sources", -1, null, -1);
+                        copyRecord(false, context, mDataset, getSelectedItems(), "sources", -1, null, -1, -1);
 
                         return true;
 
@@ -2236,12 +2248,12 @@ public class MainActivity extends AppCompatActivity {
 
                         return true;
                     case R.id.menu_item_copy:
-                        copyRecord(false, context, mDataset, getSelectedItems(), "steps", -1, null, -1);
+                        copyRecord(false, context, mDataset, getSelectedItems(), "steps", -1, null, -1, -1);
 
                         return true;
 
                     case R.id.menu_item_move:
-                        copyRecord(true, context, mDataset, getSelectedItems(), "steps", -1, null, -1);
+                        copyRecord(true, context, mDataset, getSelectedItems(), "steps", -1, null, -1, -1);
 
                         return true;
 
@@ -2494,6 +2506,7 @@ public class MainActivity extends AppCompatActivity {
                             vals.put("value", p.getValue());
                             vals.put("variable_flag", p.getVariableFlag());
                             vals.put("list_flag", p.getListFlag());
+                            vals.put("parental_flag", p.getParentalFlag());
                             try {
                                 db.insert("params", null, vals);
                             } catch (Exception ignored) {
@@ -2538,6 +2551,7 @@ public class MainActivity extends AppCompatActivity {
                         touchHelper = new ItemTouchHelper(callback);
                         touchHelper.attachToRecyclerView(mRecyclerView);
                         activeSection = "SOURCES";
+                        parentId = -1;
                         navTitle.setText(getString(R.string.navTitleSources));
                         fab.show();
                         break;
@@ -2584,6 +2598,7 @@ public class MainActivity extends AppCompatActivity {
                             touchHelper.attachToRecyclerView(mRecyclerView);
                             activeSection = "ACTIONS";
                             sourceId = id;
+                            parentId = -1;
                             if (name == null) {
                                 c = db.rawQuery("select name from sources where id = ?", new String[]{Integer.toString(id)});
                                 if (c != null) {
@@ -2675,12 +2690,12 @@ public class MainActivity extends AppCompatActivity {
                             ArrayList<Param> paramDataset = new ArrayList<>();
                             boolean gotParent = parentId >= 0 && id == -2;
 
-                            c = db.rawQuery("select id, step_id, idx, value, variable_flag, list_flag from params where step_id = " + (gotParent ? "(select step_id from params where id = ?)" : "?") + " order by idx", new String[]{Integer.toString(gotParent ? parentId : id)});
+                            c = db.rawQuery("select id, step_id, idx, value, variable_flag, list_flag, parental_flag from params where step_id = " + (gotParent ? "(select step_id from params where id = ?)" : "?") + " order by idx", new String[]{Integer.toString(gotParent ? parentId : id)});
                             if (c != null) {
                                 if (c.moveToFirst()) {
                                     id = c.getInt(1);
                                     do {
-                                        paramDataset.add(new Param(c.getInt(0), id, c.getInt(2), c.getString(3), c.getInt(4), c.getInt(5)));
+                                        paramDataset.add(new Param(c.getInt(0), id, c.getInt(2), c.getString(3), c.getInt(4), c.getInt(5), c.getInt(6)));
                                     } while (c.moveToNext());
                                 }
                                 c.close();
@@ -2749,6 +2764,7 @@ public class MainActivity extends AppCompatActivity {
                 DialogInterface.OnClickListener backFromFirstParam = new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
                         stepId = -1;
+                        params.clear();
                         dialog.dismiss();
                         createStep(params);
                     }
@@ -3021,8 +3037,14 @@ public class MainActivity extends AppCompatActivity {
 
                         case "if":
 
+                            if (params.size() == 0) {
+                                // schon mal die Dann-Sonst-Params dabei tun
+                                params.add(new Param(-1, stepId, 3, "then", 0, 0, 1));
+                                params.add(new Param(-1, stepId, 4, "else", 0, 0, 1));
+                            }
+
                             switch (params.size()) {
-                                case 0:
+                                case 2:
 
                                     // if, Operator
 
@@ -3036,7 +3058,7 @@ public class MainActivity extends AppCompatActivity {
                                             new DialogInterface.OnClickListener() {
                                                 public void onClick(DialogInterface dialog, int id) {
                                                     if (selectedId >= 0) {
-                                                        params.add(new Param(-1, stepId, 0, ops[selectedId], 0, 0));
+                                                        params.add(new Param(-1, stepId, 0, ops[selectedId], 0, 0, 0));
                                                         createStep(params);
                                                     }
                                                 }
@@ -3044,7 +3066,7 @@ public class MainActivity extends AppCompatActivity {
 
                                     break;
 
-                                case 1:
+                                case 3:
 
                                     // if, Wert1
 
@@ -3068,13 +3090,9 @@ public class MainActivity extends AppCompatActivity {
 
                                     break;
 
-                                case 2:
+                                case 4:
 
                                     // if, Wert2
-
-                                    // schon mal die Dann-Sonst-Params dabei tun
-                                    params.add(new Param(-1, stepId, 3, "then", 0, 0));
-                                    params.add(new Param(-1, stepId, 4, "else", 0, 0));
 
                                     createParamByWizard(
                                             context,
@@ -3458,7 +3476,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             private void proceedCreateStep(Context context, SQLiteDatabase db, ArrayList<Param> params, int paramIdx, String paramValue, int varFlag, int lstFlag, int finalDialogStartingAtId) {
-                params.add(new Param(-1, stepId, paramIdx, paramValue, varFlag, lstFlag));
+                params.add(new Param(-1, stepId, paramIdx, paramValue, varFlag, lstFlag, 0));
                 if (finalDialogStartingAtId == -1)
                     createStep(params);
                 else {
