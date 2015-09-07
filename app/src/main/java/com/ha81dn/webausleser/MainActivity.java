@@ -52,6 +52,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /* FixMe-Liste
+- Kopieren/Verschieben in blanken Else-Zweig: das Zielelement bekommt die Parent-ID nicht mitgegeben
 */
 
 /* ToDo-Liste
@@ -410,7 +411,6 @@ public class MainActivity extends AppCompatActivity {
                 public void onClick(View view) {
                     String url = span.getURL();
                     if (url != null) {
-                        // ToDo: parentId-Beachtung bei ebenenübergreifenden Sprüngen
                         switch (url.substring(0, 3)) {
                             case "SRC":
                                 MainActivity.displaySection(view.getContext(), "SOURCE", sourceId, sourceName);
@@ -420,6 +420,10 @@ public class MainActivity extends AppCompatActivity {
                                     MainActivity.displaySection(view.getContext(), "ACTION", actionId, actionName);
                                 else
                                     MainActivity.displaySection(view.getContext(), "ACTION", Integer.parseInt(url.substring(3)), null);
+                                break;
+                            case "PAR":
+                                parentId = Integer.parseInt(url.substring(3));
+                                MainActivity.displaySection(view.getContext(), "ACTION", -2, null);
                                 break;
                             case "STP":
                                 if (url.length() == 3)
@@ -819,15 +823,15 @@ public class MainActivity extends AppCompatActivity {
                         builder.setPositiveButton(getString(R.string.insert), new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                if (sortNrs.get(selectedId) >= -1) {
+                                int sortNr = sortNrs.get(selectedId);
+                                if (sortNr >= -1) {
                                     Step s;
-                                    int sortNr = sortNrs.get(selectedId);
                                     int newStepId = -1;
 
                                     for (int pos : itemsFrom) {
                                         s = (Step) datasetFrom.get(pos);
                                         newStepId = DatabaseHandler.getNewId(db, "steps");
-                                        copyStep(db, s.getId(), newStepId, sortNr++, s.getName(), s.getCallFlag(), -1, idShow, moveFlag);
+                                        copyStep(db, s.getId(), newStepId, sortNr++, s.getName(), s.getCallFlag(), sortNr == -1 ? ids.get(selectedId) : parentId, idShow, moveFlag);
                                     }
                                     appActionMode.finish();
                                     db.close();
@@ -2668,6 +2672,7 @@ public class MainActivity extends AppCompatActivity {
                             activeSection = "STEPS";
                             if (!gotParent) {
                                 actionId = id;
+                                parentId = -1;
                                 if (name == null) {
                                     c = db.rawQuery("select name from actions where id = ?", new String[]{Integer.toString(id)});
                                     if (c != null) {
@@ -2709,11 +2714,12 @@ public class MainActivity extends AppCompatActivity {
                             activeSection = "PARAMS";
                             stepId = id;
                             if (name == null) {
-                                c = db.rawQuery("select function,call_flag from steps where id = ?", new String[]{Integer.toString(id)});
+                                c = db.rawQuery("select function,parent_id,call_flag from steps where id = ?", new String[]{Integer.toString(id)});
                                 if (c != null) {
                                     if (c.moveToFirst()) {
                                         String function = c.getString(0);
-                                        int flag = c.getInt(1);
+                                        parentId = c.getInt(1);
+                                        int flag = c.getInt(2);
                                         if (flag == 1) {
                                             Cursor cF;
                                             cF = db.rawQuery("select name from actions where id = ?", new String[]{function});

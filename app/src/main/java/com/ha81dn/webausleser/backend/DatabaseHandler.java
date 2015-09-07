@@ -89,9 +89,9 @@ public class DatabaseHandler extends SQLiteOpenHelper {
     public static String getNavTitleHTML(Context context, SQLiteDatabase db, String table, int id) {
         Cursor c;
         String html = null, tmp;
-        int insertPos = 0;
-        boolean first = false;
+        int insertPos = 0, parentId = -1;
         @StringRes int prefix = -1;
+        boolean first = false;
         while (table != null && id >= 0) {
             switch (table) {
                 case "sources":
@@ -143,7 +143,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                         if (c.moveToFirst()) {
                             if (html == null) {
                                 if (prefix != -1) {
-                                    html = context.getString(prefix, "<a href='STP" + id + "'>" + c.getString(1) + "</a>") + " (";
+                                    html = context.getString(R.string.oneForAnother, "<a href='PAR" + parentId + "'>" + context.getString(prefix) + "</a>", "<a href='STP" + id + "'>" + c.getString(1) + "</a>") + " (";
                                     prefix = -1;
                                 } else
                                     html = context.getString(R.string.paramsFor, c.getString(1)) + " (";
@@ -151,7 +151,7 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                             } else {
                                 tmp = "<a href='STP" + id + "'>" + c.getString(1) + "</a>";
                                 if (prefix != -1) {
-                                    tmp = context.getString(prefix, tmp);
+                                    tmp = context.getString(R.string.oneForAnother, "<a href='PAR" + parentId + "'>" + context.getString(prefix) + "</a>", tmp);
                                     prefix = -1;
                                 }
                                 if (first)
@@ -177,12 +177,13 @@ public class DatabaseHandler extends SQLiteOpenHelper {
                         if (c.moveToFirst()) {
                             switch (c.getString(1)) {
                                 case "then":
-                                    prefix = R.string.thensFor;
+                                    prefix = R.string.thens;
                                     break;
                                 case "else":
-                                    prefix = R.string.elsesFor;
+                                    prefix = R.string.elses;
                                     break;
                             }
+                            parentId = id;
                             id = c.getInt(0);
                             table = "steps";
                         }
