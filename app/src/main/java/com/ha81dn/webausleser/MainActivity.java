@@ -55,13 +55,6 @@ import java.util.TreeMap;
 */
 
 /* ToDo-Liste
-- nach dem Löschen von if-artigen-steps (deren params parent_id's sein können) in der Luft hängende
-  steps (mit parent_id, deren params-Referenzen nicht mehr existieren) kontrollieren und löschen
-  (where not exists params.id=steps.parent_id) und das als Schleife so lange, bis keine mehr da
-  sind, weil durch das Löschen in der Luft hängender steps jedes Mal wieder params mitgelöscht
-  werden könnten, die ihrerseits als parent_id dienen und durch ihr Löschen neue Lufthänger
-  produzieren
-- If- und Schleifen-Schachtelei mit Implikationen fürs Browsen, Kopieren, Löschen etc.
 - Verschieben und Kopieren asynchron mit ProgressBar-Popup
 - Step-Namen ausbuddeln, sprechend übersetzen
 - Anlegen von Quellen/Aktionen: bei Namensgleichheit meckern
@@ -93,6 +86,13 @@ import java.util.TreeMap;
 - ERL Verschieben und Kopieren per ActionMode: synchron per Assistent, bisheriger Pfad vorausgewählt
 - ERL beim Verschieben müssen doch eigentlich nur source_id (und/oder action_id oder parent_id)
   ERL geändert werden, weil ich ja sonst nach dem Kopieren den ganzen alten Quatsch löschen müsste
+- ERL nach dem Löschen von if-artigen-steps (deren params parent_id's sein können) in der Luft hängende
+  ERL steps (mit parent_id, deren params-Referenzen nicht mehr existieren) kontrollieren und löschen
+  ERL (where not exists params.id=steps.parent_id) und das als Schleife so lange, bis keine mehr da
+  ERL sind, weil durch das Löschen in der Luft hängender steps jedes Mal wieder params mitgelöscht
+  ERL werden könnten, die ihrerseits als parent_id dienen und durch ihr Löschen neue Lufthänger
+  ERL produzieren
+- ERL If- und Schleifen-Schachtelei mit Implikationen fürs Browsen, Kopieren, Löschen etc.
 */
 
 public class MainActivity extends AppCompatActivity {
@@ -557,7 +557,7 @@ public class MainActivity extends AppCompatActivity {
                                     int sortNr = 0;
                                     for (int pos : itemsFrom) {
                                         Action a = (Action) datasetFrom.get(pos);
-                                        newActionId = DatabaseHandler.getNewId(db, "actions");
+                                        if (!moveFlag) newActionId = DatabaseHandler.getNewId(db, "actions");
                                         copyAction(db, a.getId(), newActionId, sortNr++, a.getName(), ids.get(selectedId), moveFlag);
                                     }
                                     appActionMode.finish();
@@ -689,7 +689,7 @@ public class MainActivity extends AppCompatActivity {
                                     // es kann immer eine Namenskollision auftreten, wenn mehrere Aktionen
                                     // in eine andere Quelle kopiert oder verschoben werden
                                     a = (Action) datasetFrom.get(pos);
-                                    newActionId = DatabaseHandler.getNewId(db, "actions");
+                                    if (!moveFlag) newActionId = DatabaseHandler.getNewId(db, "actions");
                                     copyAction(db, a.getId(), newActionId, sortNr++, DatabaseHandler.getUniqueCopiedActionName(activity, db, a.getName(), idShow), idShow, moveFlag);
                                 }
                                 appActionMode.finish();
@@ -737,7 +737,7 @@ public class MainActivity extends AppCompatActivity {
                                     int sortNr = 0;
                                     for (int pos : itemsFrom) {
                                         Step s = (Step) datasetFrom.get(pos);
-                                        newStepId = DatabaseHandler.getNewId(db, "steps");
+                                        if (!moveFlag) newStepId = DatabaseHandler.getNewId(db, "steps");
                                         copyStep(db, s.getId(), newStepId, sortNr++, s.getName(), s.getCallFlag(), -1, ids.get(selectedId), moveFlag);
                                     }
                                     appActionMode.finish();
@@ -795,12 +795,17 @@ public class MainActivity extends AppCompatActivity {
                             if (stepHasParentalParams.get(i)) {
                                 // bei elterlichen Params klären, ob's Kinder gibt
                                 selectedId = ids.get(i);
-                                DatabaseHandler.selectAsList(db, "select id,value,ifnull((select 1 from steps where steps.parent_id=a.id limit 1),0) from params a where a.step_id = ? and a.parental_flag = 1 order by idx", new String[]{Integer.toString(selectedId)}, paramIds, null, stepParams, paramIsParent);
-                                for (int j = 0; j < stepParams.size(); j++) {
-                                    steps.add(++i, stepParams.get(j));
-                                    ids.add(i, paramIds.get(j));
-                                    sortNrs.add(i, paramIsParent.get(j) ? -2 : -1);
-                                    stepHasParentalParams.add(i, false);
+                                if (!listContainsId(itemsFrom, datasetFrom, selectedId)) {
+                                    // solche Params nur anbieten, wenn ihr Elternstep nicht Quelle
+                                    // ist, damit weder eine Rekursion (beim Kopieren) noch eine
+                                    // Hierarchielücke (beim Verschieben) entsteht
+                                    DatabaseHandler.selectAsList(db, "select id,value,ifnull((select 1 from steps where steps.parent_id=a.id limit 1),0) from params a where a.step_id = ? and a.parental_flag = 1 order by idx", new String[]{Integer.toString(selectedId)}, paramIds, null, stepParams, paramIsParent);
+                                    for (int j = 0; j < stepParams.size(); j++) {
+                                        steps.add(++i, stepParams.get(j));
+                                        ids.add(i, paramIds.get(j));
+                                        sortNrs.add(i, paramIsParent.get(j) ? -2 : -1);
+                                        stepHasParentalParams.add(i, false);
+                                    }
                                 }
                             }
                         }
@@ -837,7 +842,7 @@ public class MainActivity extends AppCompatActivity {
 
                                     for (int pos : itemsFrom) {
                                         s = (Step) datasetFrom.get(pos);
-                                        newStepId = DatabaseHandler.getNewId(db, "steps");
+                                        if (!moveFlag) newStepId = DatabaseHandler.getNewId(db, "steps");
                                         copyStep(db, s.getId(), newStepId, sortNr++, s.getName(), s.getCallFlag(), newParentId, idShow, moveFlag);
                                     }
                                     appActionMode.finish();
@@ -906,6 +911,13 @@ public class MainActivity extends AppCompatActivity {
                         break;
                 }
             }
+        }
+
+        private boolean listContainsId(List<Integer> itemsFrom, ArrayList datasetFrom, int id) {
+            for (int pos : itemsFrom) {
+                if (((UniqueRecord) datasetFrom.get(pos)).getId() == id) return true;
+            }
+            return false;
         }
 
         private String getInList(List<Integer> itemsFrom, ArrayList datasetFrom) {
@@ -2280,13 +2292,7 @@ public class MainActivity extends AppCompatActivity {
                                         Cursor c;
 
                                         ArrayList<UniqueRecord> items = getRecordsFromSelection(mDataset, getSelectedItems());
-                                        for (UniqueRecord ur : items) {
-                                            c = db.rawQuery("delete from steps where id = ?", new String[]{Integer.toString(ur.getId())});
-                                            if (c != null) {
-                                                c.moveToFirst();
-                                                c.close();
-                                            }
-                                        }
+                                        for (UniqueRecord ur : items) DatabaseHandler.deleteStep(db, ur.getId());
                                         // noinspection SuspiciousMethodCalls
                                         mDataset.removeAll(items);
 
@@ -2329,8 +2335,7 @@ public class MainActivity extends AppCompatActivity {
                             case DialogInterface.BUTTON_POSITIVE:
                                 // Yes button clicked
 
-                                c = db.rawQuery("delete from steps where id = ?", new String[]{Integer.toString(removedId)});
-                                if (c != null) c.moveToFirst();
+                                DatabaseHandler.deleteStep(db, removedId);
 
                                 break;
 
@@ -2355,13 +2360,13 @@ public class MainActivity extends AppCompatActivity {
                                         } else tmp = function;
                                         mDataset.add(position, new Step(removedId, c.getInt(0), c.getInt(1), function, tmp, flag, c.getInt(4)));
                                     }
+                                    c.close();
                                 }
                                 undoReorgAfterDismiss(position, mDataset.size() - 1, wasSelected);
                                 notifyItemInserted(position);
 
                                 break;
                         }
-                        if (c != null) c.close();
                         db.close();
                     }
                 };

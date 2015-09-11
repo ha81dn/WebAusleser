@@ -290,6 +290,28 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         return lstList;
     }
 
+    public static void deleteStep(SQLiteDatabase db, int stepId) {
+        Cursor c;
+        ArrayList<Integer> lst = new ArrayList<>();
+        int id;
+        lst.add(stepId);
+        do {
+            id = lst.get(0);
+            lst.remove(0);
+
+            c = db.rawQuery("delete from steps where id = ?", new String[]{Integer.toString(id)});
+            if (c != null) {
+                c.moveToFirst();
+                c.close();
+            }
+            c = db.rawQuery("select id from steps where parent_id>=0 and not exists (select null from params where params.id=steps.parent_id)", null);
+            if (c != null) {
+                if (c.moveToFirst()) lst.add(c.getInt(0));
+                c.close();
+            }
+        } while (lst.size() >= 1);
+    }
+
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL("create table if not exists sources (id integer primary key, name text collate nocase)");
