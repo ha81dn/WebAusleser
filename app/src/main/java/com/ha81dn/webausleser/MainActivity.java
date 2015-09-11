@@ -52,12 +52,9 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /* FixMe-Liste
-- Verschieben aus verelterten Untiefen in höhergelegene Steps
 */
 
 /* ToDo-Liste
-- beim Verschieben müssen doch eigentlich nur source_id (und/oder action_id oder parent_id) geändert
-  werden, weil ich ja sonst nach dem Kopieren den ganzen alten Quatsch löschen müsste
 - nach dem Löschen von if-artigen-steps (deren params parent_id's sein können) in der Luft hängende
   steps (mit parent_id, deren params-Referenzen nicht mehr existieren) kontrollieren und löschen
   (where not exists params.id=steps.parent_id) und das als Schleife so lange, bis keine mehr da
@@ -94,6 +91,8 @@ import java.util.TreeMap;
 - ERL Umbenennen per ActionMode (synchron)
 - ERL Löschen debuggen, da kommen die Adapter-Indizes durcheinander!!!
 - ERL Verschieben und Kopieren per ActionMode: synchron per Assistent, bisheriger Pfad vorausgewählt
+- ERL beim Verschieben müssen doch eigentlich nur source_id (und/oder action_id oder parent_id)
+  ERL geändert werden, weil ich ja sonst nach dem Kopieren den ganzen alten Quatsch löschen müsste
 */
 
 public class MainActivity extends AppCompatActivity {
@@ -714,7 +713,7 @@ public class MainActivity extends AppCompatActivity {
                         final ArrayList<String> stepActions = new ArrayList<>();
                         ids = new ArrayList<>();
                         final ArrayList<Boolean> actionsWithoutSteps = new ArrayList<>();
-                        DatabaseHandler.selectAsList(db, "select id,name,ifnull((select 0 from steps where steps.action_id=actions.id" + (moveFlag ? " and steps.id not in " + getInList(itemsFrom, datasetFrom) : "") + "),1) from actions where source_id = ? order by sort_nr", new String[]{Integer.toString(idShow)}, ids, null, stepActions, actionsWithoutSteps);
+                        DatabaseHandler.selectAsList(db, "select id,name,ifnull((select 0 from steps where steps.action_id=actions.id" + (moveFlag ? " and steps.id not in " + getInList(itemsFrom, datasetFrom) : "") + " limit 1),1) from actions where source_id = ? order by sort_nr", new String[]{Integer.toString(idShow)}, ids, null, stepActions, actionsWithoutSteps);
 
                         builder = new AlertDialog.Builder(context);
                         builder.setTitle(moveFlag ? getString(R.string.moveStep) : getString(R.string.copyStep));
@@ -773,8 +772,8 @@ public class MainActivity extends AppCompatActivity {
                         ArrayList<Boolean> paramIsParent = new ArrayList<>();
                         ArrayList<Integer> paramIds = new ArrayList<>();
                         ArrayList<String> stepParams = new ArrayList<>();
-                        // FixMe: nicht nur ActionId sondern auch ParentId müssen übereinstimmen!!!!!
-                        final boolean stepDestinationEqualsSource = ((Step) datasetFrom.get(itemsFrom.get(0))).getActionId() == idShow;
+                        Step s = (Step) datasetFrom.get(itemsFrom.get(0));
+                        final boolean stepDestinationEqualsSource = s.getActionId()==idShow && s.getParentId()==parentId;
 
                         DatabaseHandler.selectAsList(db, "select id,sort_nr,function,ifnull((select 1 from params where params.step_id=a.id and params.parental_flag=1 limit 1),0) from steps a where a.action_id = ? and a.parent_id = ? order by sort_nr", new String[]{Integer.toString(idShow), Integer.toString(parentId)}, ids, sortNrs, steps, stepHasParentalParams);
                         if (moveFlag && stepDestinationEqualsSource) {
@@ -933,7 +932,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if (moveFlag) {
-                cS = db.rawQuery("update steps set action_id = ?,parent_id = ?,sort_nr = ? where id = ?", new String[]{Integer.toString(actionId), Integer.toString(sortNr), Integer.toString(parentId), Integer.toString(oldId)});
+                cS = db.rawQuery("update steps set action_id = ?,parent_id = ?,sort_nr = ? where id = ?", new String[]{Integer.toString(actionId), Integer.toString(parentId), Integer.toString(sortNr), Integer.toString(oldId)});
                 if (cS != null) {
                     cS.moveToFirst();
                     cS.close();
