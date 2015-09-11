@@ -52,7 +52,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /* FixMe-Liste
-- Kopieren/Verschieben in blanken Else-Zweig: das Zielelement bekommt die Parent-ID nicht mitgegeben
+- Verschieben aus verelterten Untiefen in höhergelegene Steps
 */
 
 /* ToDo-Liste
@@ -773,6 +773,7 @@ public class MainActivity extends AppCompatActivity {
                         ArrayList<Boolean> paramIsParent = new ArrayList<>();
                         ArrayList<Integer> paramIds = new ArrayList<>();
                         ArrayList<String> stepParams = new ArrayList<>();
+                        // FixMe: nicht nur ActionId sondern auch ParentId müssen übereinstimmen!!!!!
                         final boolean stepDestinationEqualsSource = ((Step) datasetFrom.get(itemsFrom.get(0))).getActionId() == idShow;
 
                         DatabaseHandler.selectAsList(db, "select id,sort_nr,function,ifnull((select 1 from params where params.step_id=a.id and params.parental_flag=1 limit 1),0) from steps a where a.action_id = ? and a.parent_id = ? order by sort_nr", new String[]{Integer.toString(idShow), Integer.toString(parentId)}, ids, sortNrs, steps, stepHasParentalParams);
@@ -827,15 +828,23 @@ public class MainActivity extends AppCompatActivity {
                                 if (sortNr >= -1) {
                                     Step s;
                                     int newStepId = -1;
+                                    int newParentId;
+                                    if (sortNr == -1) {
+                                        sortNr = 0;
+                                        newParentId = ids.get(selectedId);
+                                    }
+                                    else
+                                        newParentId = parentId;
 
                                     for (int pos : itemsFrom) {
                                         s = (Step) datasetFrom.get(pos);
                                         newStepId = DatabaseHandler.getNewId(db, "steps");
-                                        copyStep(db, s.getId(), newStepId, sortNr++, s.getName(), s.getCallFlag(), sortNr == -1 ? ids.get(selectedId) : parentId, idShow, moveFlag);
+                                        copyStep(db, s.getId(), newStepId, sortNr++, s.getName(), s.getCallFlag(), newParentId, idShow, moveFlag);
                                     }
                                     appActionMode.finish();
                                     db.close();
-                                    displaySection(activity, "ACTION", idShow, null, newStepId);
+                                    if (newParentId >= 0) MainActivity.parentId = newParentId;
+                                    displaySection(activity, "ACTION", newParentId == -1 ? idShow : -2, null, newStepId);
                                 } else
                                     copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, idShow, "steps", -1, ids.get(selectedId));
                             }
@@ -924,7 +933,7 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if (moveFlag) {
-                cS = db.rawQuery("update steps set action_id = ?,sort_nr = ? where id = ?", new String[]{Integer.toString(actionId), Integer.toString(sortNr), Integer.toString(oldId)});
+                cS = db.rawQuery("update steps set action_id = ?,parent_id = ?,sort_nr = ? where id = ?", new String[]{Integer.toString(actionId), Integer.toString(sortNr), Integer.toString(parentId), Integer.toString(oldId)});
                 if (cS != null) {
                     cS.moveToFirst();
                     cS.close();
