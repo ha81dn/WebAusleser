@@ -9,6 +9,7 @@ import android.support.annotation.StringRes;
 import com.ha81dn.webausleser.MainActivity;
 import com.ha81dn.webausleser.R;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 
 public class DatabaseHandler extends SQLiteOpenHelper {
@@ -84,6 +85,30 @@ public class DatabaseHandler extends SQLiteOpenHelper {
         } catch (Exception ignored) {
         }
         return newName;
+    }
+
+    public static ArrayList<Integer> getParentChain(SQLiteDatabase db, int parentId) {
+        Cursor c;
+        ArrayList<Integer> chain = new ArrayList<>();
+        int stepId;
+        chain.add(parentId);
+        while (parentId >= 0) {
+            c = db.rawQuery("select step_id from params where id = ?", new String[]{Integer.toString(parentId)});
+            parentId = -1;
+            if (c != null) {
+                if (c.moveToFirst()) {
+                    stepId = c.getInt(0);
+                    c.close();
+                    c = db.rawQuery("select parent_id from steps where id = ?", new String[]{Integer.toString(stepId)});
+                    if (c != null) {
+                        if (c.moveToFirst()) parentId = c.getInt(0);
+                    }
+                }
+                if (c != null) c.close();
+            }
+            chain.add(parentId);
+        }
+        return chain;
     }
 
     public static String getNavTitleHTML(Context context, SQLiteDatabase db, String table, int id) {

@@ -780,14 +780,18 @@ public class MainActivity extends AppCompatActivity {
                         final ArrayList<String> steps = new ArrayList<>();
                         ids = new ArrayList<>();
                         sortNrs = new ArrayList<>();
+                        ArrayList<String> stepParams = new ArrayList<>();
+                        ArrayList<Integer> paramIds = new ArrayList<>();
+                        ArrayList<Integer> parentChain = null;
                         ArrayList<Boolean> stepHasParentalParams = new ArrayList<>();
                         ArrayList<Boolean> paramIsParent = new ArrayList<>();
-                        ArrayList<Integer> paramIds = new ArrayList<>();
-                        ArrayList<String> stepParams = new ArrayList<>();
                         final Step s = (Step) datasetFrom.get(itemsFrom.get(0));
+                        int parentalId;
                         final boolean stepDestinationEqualsSource = s.getActionId()==idShow && s.getParentId()==parentId;
+                        boolean stepsOfParentChainShown = s.getActionId()==idShow && !stepDestinationEqualsSource;
+                        boolean parentChainMatch = false;
 
-                        DatabaseHandler.selectAsList(db, "select id,sort_nr,function,ifnull((select 1 from params where params.step_id=a.id and params.parental_flag=1 limit 1),0) from steps a where a.action_id = ? and a.parent_id = ? order by sort_nr", new String[]{Integer.toString(idShow), Integer.toString(parentId)}, ids, sortNrs, steps, stepHasParentalParams);
+                                DatabaseHandler.selectAsList(db, "select id,sort_nr,function,ifnull((select 1 from params where params.step_id=a.id and params.parental_flag=1 limit 1),0) from steps a where a.action_id = ? and a.parent_id = ? order by sort_nr", new String[]{Integer.toString(idShow), Integer.toString(parentId)}, ids, sortNrs, steps, stepHasParentalParams);
                         if (moveFlag && stepDestinationEqualsSource) {
                             // beim Verschieben innerhalb der Kopiequelle spielen die Quellschritte als Angelpunkt keine Rolle
                             for (int pos : itemsFrom) {
@@ -806,17 +810,26 @@ public class MainActivity extends AppCompatActivity {
                         for (int i = 0; i < ids.size(); i++) {
                             if (stepHasParentalParams.get(i)) {
                                 // bei elterlichen Params klären, ob's Kinder gibt
-                                selectedId = ids.get(i);
-                                if (!listContainsId(itemsFrom, datasetFrom, selectedId)) {
+                                parentalId = ids.get(i);
+                                if (!listContainsId(itemsFrom, datasetFrom, parentalId)) {
                                     // solche Params nur anbieten, wenn ihr Elternstep nicht Quelle
                                     // ist, damit weder eine Rekursion (beim Kopieren) noch eine
                                     // Hierarchielücke (beim Verschieben) entsteht
-                                    DatabaseHandler.selectAsList(db, "select id,value,ifnull((select 1 from steps where steps.parent_id=a.id" + (moveFlag ? " and steps.id not in " + getInList(itemsFrom, datasetFrom) : "") + " limit 1),0) from params a where a.step_id = ? and a.parental_flag = 1 order by idx", new String[]{Integer.toString(selectedId)}, paramIds, null, stepParams, paramIsParent);
+                                    DatabaseHandler.selectAsList(db, "select id,value,ifnull((select 1 from steps where steps.parent_id=a.id" + (moveFlag ? " and steps.id not in " + getInList(itemsFrom, datasetFrom) : "") + " limit 1),0) from params a where a.step_id = ? and a.parental_flag = 1 order by idx", new String[]{Integer.toString(parentalId)}, paramIds, null, stepParams, paramIsParent);
                                     for (int j = 0; j < stepParams.size(); j++) {
                                         steps.add(++i, stepParams.get(j));
-                                        ids.add(i, paramIds.get(j));
+                                        parentalId = paramIds.get(j);
+                                        ids.add(i, parentalId);
                                         sortNrs.add(i, paramIsParent.get(j) ? -2 : -1);
                                         stepHasParentalParams.add(i, false);
+                                        // die Elternkette prüfen, um die Auswahl vorbelegen zu können
+                                        if (stepsOfParentChainShown && !parentChainMatch) {
+                                            if (parentChain == null) parentChain = DatabaseHandler.getParentChain(db, s.getParentId());
+                                            if (parentChain.contains(parentalId)) {
+                                                selectedId = i;
+                                                parentChainMatch = true;
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -824,7 +837,7 @@ public class MainActivity extends AppCompatActivity {
 
                         builder = new AlertDialog.Builder(context);
                         builder.setTitle(moveFlag ? getString(R.string.moveStep) : getString(R.string.copyStep));
-                        selectedId = steps.size() - 1;
+                        if (!parentChainMatch) selectedId = steps.size() - 1;
                         builder.setSingleChoiceItems(steps.toArray(new String[steps.size()]), selectedId, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int id) {
@@ -837,7 +850,7 @@ public class MainActivity extends AppCompatActivity {
                                 selectedId = id;
                             }
                         });
-                        builder.setPositiveButton(getString(R.string.insert), new DialogInterface.OnClickListener() {
+                        builder.setPositiveButton(parentChainMatch && sortNrs.get(selectedId)==-2 ? getString(R.string.next) : getString(R.string.insert), new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 int sortNr = sortNrs.get(selectedId);
