@@ -55,28 +55,27 @@ import java.util.TreeMap;
 */
 
 /* ToDo-Liste
-- Verschieben und Kopieren asynchron mit ProgressBar-Popup
-- Step-Namen ausbuddeln, sprechend übersetzen
-- Anlegen von Quellen/Aktionen: bei Namensgleichheit meckern
-- Zeilennummern bei sortierten Adaptern
-- assistentengestützte Parameter-Wertänderung
-- Schritt-Assistent mit Kategorien (Zeichenfolgenfunktionen, Ablaufsteuerung ...)
 - Anlegerei mit Assistent für sämtliche vorgefertigten Schritte
+- Schritt-Assistent mit Kategorien (Zeichenfolgenfunktionen, Ablaufsteuerung ...)
+- assistentengestützte Parameter-Wertänderung
+- Step-Namen ausbuddeln, sprechend übersetzen
+- Zeilennummern bei sortierten Adaptern
 - Aktion zur Funktion umwandeln (als Option beim Verschieben und Kopieren)
 - Kopfzeile ausbauen (mehrzeilig, Zusatzinfos)
 - Datenbankmodell für Jobs und Meldungen
 - Tabs für Fragment-Wechsel zu Funktionen, Einstellungen und Testcenter
 - History-Back/Forward-Buttons für navTitle
-- Hintergrund beim Swipen andersfarbig
-- Cursor andersfarbig, weil schlecht zu erkennen
+- Theme-Überarbeitung (Hintergrund beim Swipen andersfarbig, Cursor kontrastreicher)
 - aussagekräftiges Elementlayout inkl. Bezeichnungen von Kindern
-- Absturzbehandlung wie beim MioKlicker, nur mit eigener Activity statt Tabpage
-  dazu allgemeinen Exception-Ignorierer bauen (vgl. Uniface), den man in den Optionen aber dann doch
-  aufplatschmäßig einschalten kann (also als Popup-Exception mit Fehlerbericht-Senden-Option)
 - Testcenter entwickeln
 - Widget entwickeln (einfach nur farbig background-gespanter Monospace-Text, schön blockig,
   bei Antippen Browser evtl. Link selber baubar, aber ohne Foto-Spirenzchen)
+- Absturzbehandlung wie beim MioKlicker, nur mit eigener Activity statt Tabpage
+  dazu allgemeinen Exception-Ignorierer bauen (vgl. Uniface), den man in den Optionen aber dann doch
+  aufplatschmäßig einschalten kann (also als Popup-Exception mit Fehlerbericht-Senden-Option)
 - Import/Export entwickeln
+- (zurückgestellt) Verschieben und Kopieren asynchron mit ProgressBar-Popup
+- (zurückgestellt) Anlegen von Quellen/Aktionen: bei Namensgleichheit meckern
 - ERL Rippelei ordentlich machen
 - ERL normalen onClick() erweitern um intentUpdate
 - ERL alle Adapter nach Vorbild des SourceAdapter auf neue Drag-Swipe-Kontext-Logik umbauen
@@ -93,6 +92,7 @@ import java.util.TreeMap;
   ERL werden könnten, die ihrerseits als parent_id dienen und durch ihr Löschen neue Lufthänger
   ERL produzieren
 - ERL If- und Schleifen-Schachtelei mit Implikationen fürs Browsen, Kopieren, Löschen etc.
+- ERL Back-Buttons für CopyRecord
 */
 
 public class MainActivity extends AppCompatActivity {
@@ -465,8 +465,6 @@ public class MainActivity extends AppCompatActivity {
             AlertDialog.Builder builder;
             AlertDialog dialog;
 
-            // ToDo: Back-Buttons
-
             if (tableShow == null) {
                 // ggf. erster Assistentenschritt
                 switch (tableFrom) {
@@ -689,7 +687,8 @@ public class MainActivity extends AppCompatActivity {
                                     // es kann immer eine Namenskollision auftreten, wenn mehrere Aktionen
                                     // in eine andere Quelle kopiert oder verschoben werden
                                     a = (Action) datasetFrom.get(pos);
-                                    if (!moveFlag) newActionId = DatabaseHandler.getNewId(db, "actions");
+                                    if (!moveFlag)
+                                        newActionId = DatabaseHandler.getNewId(db, "actions");
                                     copyAction(db, a.getId(), newActionId, sortNr++, DatabaseHandler.getUniqueCopiedActionName(activity, db, a.getName(), idShow), idShow, moveFlag);
                                 }
                                 appActionMode.finish();
@@ -702,6 +701,12 @@ public class MainActivity extends AppCompatActivity {
                                     public void onClick(DialogInterface dialog, int id) {
                                         appActionMode.finish();
                                         db.close();
+                                    }
+                                });
+                        builder.setNeutralButton(getString(R.string.back),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, -1, null, -1, -1);
                                     }
                                 });
                         dialog = builder.create();
@@ -737,7 +742,8 @@ public class MainActivity extends AppCompatActivity {
                                     int sortNr = 0;
                                     for (int pos : itemsFrom) {
                                         Step s = (Step) datasetFrom.get(pos);
-                                        if (!moveFlag) newStepId = DatabaseHandler.getNewId(db, "steps");
+                                        if (!moveFlag)
+                                            newStepId = DatabaseHandler.getNewId(db, "steps");
                                         copyStep(db, s.getId(), newStepId, sortNr++, s.getName(), s.getCallFlag(), -1, ids.get(selectedId), moveFlag);
                                     }
                                     appActionMode.finish();
@@ -752,6 +758,12 @@ public class MainActivity extends AppCompatActivity {
                                     public void onClick(DialogInterface dialog, int id) {
                                         appActionMode.finish();
                                         db.close();
+                                    }
+                                });
+                        builder.setNeutralButton(getString(R.string.back),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, -1, null, -1, -1);
                                     }
                                 });
                         dialog = builder.create();
@@ -772,7 +784,7 @@ public class MainActivity extends AppCompatActivity {
                         ArrayList<Boolean> paramIsParent = new ArrayList<>();
                         ArrayList<Integer> paramIds = new ArrayList<>();
                         ArrayList<String> stepParams = new ArrayList<>();
-                        Step s = (Step) datasetFrom.get(itemsFrom.get(0));
+                        final Step s = (Step) datasetFrom.get(itemsFrom.get(0));
                         final boolean stepDestinationEqualsSource = s.getActionId()==idShow && s.getParentId()==parentId;
 
                         DatabaseHandler.selectAsList(db, "select id,sort_nr,function,ifnull((select 1 from params where params.step_id=a.id and params.parental_flag=1 limit 1),0) from steps a where a.action_id = ? and a.parent_id = ? order by sort_nr", new String[]{Integer.toString(idShow), Integer.toString(parentId)}, ids, sortNrs, steps, stepHasParentalParams);
@@ -836,13 +848,13 @@ public class MainActivity extends AppCompatActivity {
                                     if (sortNr == -1) {
                                         sortNr = 0;
                                         newParentId = ids.get(selectedId);
-                                    }
-                                    else
+                                    } else
                                         newParentId = parentId;
 
                                     for (int pos : itemsFrom) {
                                         s = (Step) datasetFrom.get(pos);
-                                        if (!moveFlag) newStepId = DatabaseHandler.getNewId(db, "steps");
+                                        if (!moveFlag)
+                                            newStepId = DatabaseHandler.getNewId(db, "steps");
                                         copyStep(db, s.getId(), newStepId, sortNr++, s.getName(), s.getCallFlag(), newParentId, idShow, moveFlag);
                                     }
                                     appActionMode.finish();
@@ -858,6 +870,43 @@ public class MainActivity extends AppCompatActivity {
                                     public void onClick(DialogInterface dialog, int id) {
                                         appActionMode.finish();
                                         db.close();
+                                    }
+                                });
+                        builder.setNeutralButton(getString(R.string.back),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        Cursor c;
+                                        String tableParam = null;
+                                        int idParam = -1;
+                                        int parentParam = parentId;
+                                        if (parentId == -1) {
+                                            c = db.rawQuery("select source_id from actions where id = ?", new String[]{Integer.toString(s.getActionId())});
+                                            if (c != null) {
+                                                if (c.moveToFirst()) {
+                                                    tableParam = "actions";
+                                                    idParam = c.getInt(0);
+                                                }
+                                                c.close();
+                                            }
+                                        } else {
+                                            c = db.rawQuery("select step_id from params where id = ?", new String[]{Integer.toString(parentId)});
+                                            if (c != null) {
+                                                if (c.moveToFirst()) {
+                                                    int sId = c.getInt(0);
+                                                    c.close();
+                                                    c = db.rawQuery("select parent_id from steps where id = ?", new String[]{Integer.toString(sId)});
+                                                    if (c != null) {
+                                                        if (c.moveToFirst()) {
+                                                            tableParam = "steps";
+                                                            idParam = idShow;
+                                                            parentParam = c.getInt(0);
+                                                        }
+                                                    }
+                                                }
+                                                if (c != null) c.close();
+                                            }
+                                        }
+                                        copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, idParam, tableParam, -1, parentParam);
                                     }
                                 });
                         dialog = builder.create();
@@ -900,6 +949,12 @@ public class MainActivity extends AppCompatActivity {
                                     public void onClick(DialogInterface dialog, int id) {
                                         appActionMode.finish();
                                         db.close();
+                                    }
+                                });
+                        builder.setNeutralButton(getString(R.string.back),
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        copyRecord(moveFlag, context, datasetFrom, itemsFrom, tableFrom, a.getSourceId(), "actions", -1, -1);
                                     }
                                 });
                         dialog = builder.create();
@@ -1434,14 +1489,14 @@ public class MainActivity extends AppCompatActivity {
             public boolean onActionItemClicked(final ActionMode actionMode, MenuItem menuItem) {
                 if (getSelectedItemCount() == 0) return false;
                 AlertDialog.Builder builder;
-                final Context context = getActivity();
+                final MainActivity activity = (MainActivity) getActivity();
 
                 switch (menuItem.getItemId()) {
                     case R.id.menu_item_rename:
-                        builder = new AlertDialog.Builder(context);
+                        builder = new AlertDialog.Builder(activity);
                         builder.setTitle(getString(R.string.renameAction));
                         builder.setMessage(getString(R.string.inputName));
-                        final EditText input = createInput(context, false);
+                        final EditText input = createInput(activity, false);
                         builder.setView(input);
                         final int pos = getSelectedItems().get(0);
                         final Action a = mDataset.get(pos);
@@ -1450,9 +1505,9 @@ public class MainActivity extends AppCompatActivity {
                         builder.setPositiveButton(getString(R.string.ok),
                                 new DialogInterface.OnClickListener() {
                                     public void onClick(DialogInterface dialog, int id) {
-                                        SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
+                                        SQLiteDatabase db = DatabaseHandler.getInstance(activity).getWritableDatabase();
                                         Cursor c;
-                                        String name = input.getText().toString().trim();
+                                        String name = DatabaseHandler.getUniqueCopiedActionName(activity, db, input.getText().toString().trim(), a.getSourceId());
 
                                         c = db.rawQuery("update actions set name = ? where id = ?", new String[]{name, Integer.toString(a.getId())});
                                         if (c != null) {
@@ -1482,12 +1537,12 @@ public class MainActivity extends AppCompatActivity {
                         return true;
 
                     case R.id.menu_item_copy:
-                        copyRecord(false, context, mDataset, getSelectedItems(), "actions", -1, null, -1, -1);
+                        copyRecord(false, activity, mDataset, getSelectedItems(), "actions", -1, null, -1, -1);
 
                         return true;
 
                     case R.id.menu_item_move:
-                        copyRecord(true, context, mDataset, getSelectedItems(), "actions", -1, null, -1, -1);
+                        copyRecord(true, activity, mDataset, getSelectedItems(), "actions", -1, null, -1, -1);
 
                         return true;
 
@@ -1498,7 +1553,7 @@ public class MainActivity extends AppCompatActivity {
                                 switch (which) {
                                     case DialogInterface.BUTTON_POSITIVE:
                                         //Yes button clicked
-                                        SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
+                                        SQLiteDatabase db = DatabaseHandler.getInstance(activity).getWritableDatabase();
                                         Cursor c;
 
                                         ArrayList<UniqueRecord> items = getRecordsFromSelection(mDataset, getSelectedItems());
@@ -1525,7 +1580,7 @@ public class MainActivity extends AppCompatActivity {
                             }
                         };
 
-                        builder = new AlertDialog.Builder(context);
+                        builder = new AlertDialog.Builder(activity);
                         builder.setMessage(getString(R.string.sureActions))
                                 .setPositiveButton(getString(R.string.yes), dialogClickListener)
                                 .setNegativeButton(getString(R.string.no), dialogClickListener).show();
@@ -1696,14 +1751,14 @@ public class MainActivity extends AppCompatActivity {
             public boolean onActionItemClicked(final ActionMode actionMode, MenuItem menuItem) {
                 if (getSelectedItemCount() == 0) return false;
                 AlertDialog.Builder builder;
-                final Context context = getActivity();
+                final MainActivity activity = (MainActivity) getActivity();
 
                 switch (menuItem.getItemId()) {
                     case R.id.menu_item_rename:
-                        builder = new AlertDialog.Builder(context);
+                        builder = new AlertDialog.Builder(activity);
                         builder.setTitle(getString(R.string.renameFunction));
                         builder.setMessage(getString(R.string.inputName));
-                        final EditText input = createInput(context, false);
+                        final EditText input = createInput(activity, false);
                         builder.setView(input);
                         final int pos = getSelectedItems().get(0);
                         final Action a = mDataset.get(pos);
@@ -1712,9 +1767,9 @@ public class MainActivity extends AppCompatActivity {
                         builder.setPositiveButton(getString(R.string.ok),
                                 new DialogInterface.OnClickListener() {
                                     public void onClick(DialogInterface dialog, int id) {
-                                        SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
+                                        SQLiteDatabase db = DatabaseHandler.getInstance(activity).getWritableDatabase();
                                         Cursor c;
-                                        String name = input.getText().toString().trim();
+                                        String name = DatabaseHandler.getUniqueCopiedActionName(activity, db, input.getText().toString().trim(), a.getSourceId());
 
                                         c = db.rawQuery("update actions set name = ? where id = ?", new String[]{name, Integer.toString(a.getId())});
                                         if (c != null) {
@@ -1749,7 +1804,7 @@ public class MainActivity extends AppCompatActivity {
                                 switch (which) {
                                     case DialogInterface.BUTTON_POSITIVE:
                                         //Yes button clicked
-                                        SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
+                                        SQLiteDatabase db = DatabaseHandler.getInstance(activity).getWritableDatabase();
                                         Cursor c;
 
                                         ArrayList<UniqueRecord> items = getRecordsFromSelection(mDataset, getSelectedItems());
@@ -1776,7 +1831,7 @@ public class MainActivity extends AppCompatActivity {
                             }
                         };
 
-                        builder = new AlertDialog.Builder(context);
+                        builder = new AlertDialog.Builder(activity);
                         builder.setMessage(getString(R.string.sureFunctions))
                                 .setPositiveButton(getString(R.string.yes), dialogClickListener)
                                 .setNegativeButton(getString(R.string.no), dialogClickListener).show();
@@ -2009,14 +2064,14 @@ public class MainActivity extends AppCompatActivity {
             public boolean onActionItemClicked(final ActionMode actionMode, MenuItem menuItem) {
                 if (getSelectedItemCount() == 0) return false;
                 AlertDialog.Builder builder;
-                final Context context = getActivity();
+                final MainActivity activity = (MainActivity) getActivity();
 
                 switch (menuItem.getItemId()) {
                     case R.id.menu_item_rename:
-                        builder = new AlertDialog.Builder(context);
+                        builder = new AlertDialog.Builder(activity);
                         builder.setTitle(getString(R.string.renameSource));
                         builder.setMessage(getString(R.string.inputName));
-                        final EditText input = createInput(context, false);
+                        final EditText input = createInput(activity, false);
                         builder.setView(input);
                         final int pos = getSelectedItems().get(0);
                         final Source s = mDataset.get(pos);
@@ -2025,9 +2080,9 @@ public class MainActivity extends AppCompatActivity {
                         builder.setPositiveButton(getString(R.string.ok),
                                 new DialogInterface.OnClickListener() {
                                     public void onClick(DialogInterface dialog, int id) {
-                                        SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
+                                        SQLiteDatabase db = DatabaseHandler.getInstance(activity).getWritableDatabase();
                                         Cursor c;
-                                        String name = input.getText().toString().trim();
+                                        String name = DatabaseHandler.getUniqueCopiedSourceName(activity, db, input.getText().toString().trim());
 
                                         c = db.rawQuery("update sources set name = ? where id = ?", new String[]{name, Integer.toString(s.getId())});
                                         if (c != null) {
@@ -2057,7 +2112,7 @@ public class MainActivity extends AppCompatActivity {
                         return true;
 
                     case R.id.menu_item_copy:
-                        copyRecord(false, context, mDataset, getSelectedItems(), "sources", -1, null, -1, -1);
+                        copyRecord(false, activity, mDataset, getSelectedItems(), "sources", -1, null, -1, -1);
 
                         return true;
 
@@ -2068,7 +2123,7 @@ public class MainActivity extends AppCompatActivity {
                                 switch (which) {
                                     case DialogInterface.BUTTON_POSITIVE:
                                         //Yes button clicked
-                                        SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
+                                        SQLiteDatabase db = DatabaseHandler.getInstance(activity).getWritableDatabase();
                                         Cursor c;
 
                                         ArrayList<UniqueRecord> items = getRecordsFromSelection(mDataset, getSelectedItems());
@@ -2095,7 +2150,7 @@ public class MainActivity extends AppCompatActivity {
                             }
                         };
 
-                        builder = new AlertDialog.Builder(context);
+                        builder = new AlertDialog.Builder(activity);
                         builder.setMessage(getString(R.string.sureSources))
                                 .setPositiveButton(getString(R.string.yes), dialogClickListener)
                                 .setNegativeButton(getString(R.string.no), dialogClickListener).show();
@@ -2289,7 +2344,6 @@ public class MainActivity extends AppCompatActivity {
                                     case DialogInterface.BUTTON_POSITIVE:
                                         //Yes button clicked
                                         SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
-                                        Cursor c;
 
                                         ArrayList<UniqueRecord> items = getRecordsFromSelection(mDataset, getSelectedItems());
                                         for (UniqueRecord ur : items) DatabaseHandler.deleteStep(db, ur.getId());
@@ -2330,7 +2384,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
-                        Cursor c = null;
+                        Cursor c;
                         switch (which) {
                             case DialogInterface.BUTTON_POSITIVE:
                                 // Yes button clicked
