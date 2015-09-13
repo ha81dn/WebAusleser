@@ -56,8 +56,8 @@ import java.util.TreeMap;
 
 /* ToDo-Liste
 - Anlegerei mit Assistent für sämtliche vorgefertigten Schritte
-- Schritt-Assistent mit Kategorien (Zeichenfolgenfunktionen, Ablaufsteuerung ...)
 - assistentengestützte Parameter-Wertänderung
+- Schritt-Assistent mit Kategorien (Zeichenfolgenfunktionen, Ablaufsteuerung ...)
 - Step-Namen ausbuddeln, sprechend übersetzen
 - Zeilennummern bei sortierten Adaptern
 - Aktion zur Funktion umwandeln (als Option beim Verschieben und Kopieren)

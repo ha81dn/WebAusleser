@@ -62,45 +62,89 @@
 
     <string name="setParam1">"'Zuweisen' - Quelle"</string>
     <string name="setParam2">"'Zuweisen' - Ziel"</string>
-    <string name="addTitle">Addieren</string>
-    <string name="addParam1">Quelle</string>
-    <string name="addParam2">Summand</string>
-    <string name="addParam3">Ziel</string>
-    <string name="subtractParam1">Quelle</string>
-    <string name="subtractParam2">Subtrahend</string>
-    <string name="subtractParam3">Ziel</string>
-    <string name="multiplyParam1">Quelle</string>
-    <string name="multiplyParam2">Faktor</string>
-    <string name="multiplyParam3">Ziel</string>
-    <string name="divideParam1">Quelle</string>
-    <string name="divideParam2">Divisor</string>
-    <string name="divideParam3">Ziel</string>
-    <string name="incrTitle">Inkrementieren</string>
-    <string name="incrParam1">Variable</string>
-    <string name="decrTitle">Dekrementieren</string>
-    <string name="decrParam1">Variable</string>
-    <string name="substringTitle">Teil</string>
-    <string name="substringParam1">Quelle</string>
-    <string name="substringParam2">Startposition</string>
-    <string name="substringParam3">Länge</string>
-    <string name="substringParam4">Ziel</string>
-    <string name="trimTitle">Glätten</string>
-    <string name="trimParam1">Quelle</string>
-    <string name="trimParam2">Ziel</string>
-    <string name="ltrimTitle">LinksGlätten</string>
-    <string name="ltrimParam1">Quelle</string>
-    <string name="ltrimParam2">Ziel</string>
-    <string name="rtrimTitle">RechtsGlätten</string>
-    <string name="rtrimParam1">Quelle</string>
-    <string name="rtrimParam2">Ziel</string>
-    <string name="replaceTitle">Ersetzen</string>
-    <string name="replaceParam1">Quelle</string>
-    <string name="replaceParam2">Suche</string>
-    <string name="replaceParam3">Ersetze</string>
-    <string name="replaceParam4">Ziel</string>
+    <string name="addParam1">"'Addieren' - Quelle"</string>
+    <string name="addParam2">"'Addieren' - Summand"</string>
+    <string name="addParam3">"'Addieren' - Ziel"</string>
+    <string name="subtractParam1">"'Subtrahieren' - Quelle"</string>
+    <string name="subtractParam2">"'Subtrahieren' - Subtrahend"</string>
+    <string name="subtractParam3">"'Subtrahieren' - Ziel"</string>
+    <string name="multiplyParam1">"'Multiplizieren' - Quelle"</string>
+    <string name="multiplyParam2">"'Multiplizieren' - Faktor"</string>
+    <string name="multiplyParam3">"'Multiplizieren' - Ziel"</string>
+    <string name="divideParam1">"'Dividieren' - Quelle"</string>
+    <string name="divideParam2">"'Dividieren' - Divisor"</string>
+    <string name="divideParam3">"'Dividieren' - Ziel"</string>
+    <string name="incrParam1">"'Inkrementieren' - Variable"</string>
+    <string name="decrParam1">"'Dekrementieren' - Variable"</string>
+    <string name="substringParam1">"'Extrahieren' - Quelle"</string>
+    <string name="substringParam2">"'Extrahieren' - Startposition"</string>
+    <string name="substringParam3">"'Extrahieren' - Länge"</string>
+    <string name="substringParam4">"'Extrahieren' - Ziel"</string>
+    <string name="trimParam1">"'Glätten' - Quelle"</string>
+    <string name="trimParam2">"'Glätten' - Ziel"</string>
+    <string name="ltrimParam1">"'Linksglätten' - Quelle"</string>
+    <string name="ltrimParam2">"'Linksglätten' - Ziel"</string>
+    <string name="rtrimParam1">"'Rechtsglätten' - Quelle"</string>
+    <string name="rtrimParam2">"'Rechtsglätten' - Ziel"</string>
+    <string name="replaceParam1">"'Ersetzen' - Quelle"</string>
+    <string name="replaceParam2">"'Ersetzen' - Suchen"</string>
+    <string name="replaceParam3">"'Ersetzen' - Ersetzen"</string>
+    <string name="replaceParam4">"'Ersetzen' - Ziel"</string>
+    <string name="putlistParam1">"'Liste ergänzen' - Liste"</string>
+    <string name="putlistParam2">"'Liste ergänzen' - Element"</string>
+    <string name="foreachParam1">"'Listenschleife' - Liste"</string>
+    <string name="foreachParam2">"'Listenschleife' - Elementvariable"</string>
+    <string name="getlistParam1">"'Listenelement holen' - Liste"</string>
+    <string name="getlistParam2">"'Listenelement holen' - Position"</string>
+    <string name="getlistParam3">"'Listenelement holen' - Ziel"</string>
+    <string name="remlistParam1">"'Listenelement löschen' - Liste"</string>
+    <string name="remlistParam2">"'Listenelement löschen' - Position"</string>
     <string name="ifParam1">"'Bedingung' - Operator"</string>
     <string name="ifParam2">"'Bedingung' - Wert 1"</string>
     <string name="ifParam3">"'Bedingung' - Wert 2"</string>
+    <string name="loopParam1">"'Wiederholung' - Typ"</string>
+    <string name="loopParam2">"'Wiederholung' - Bedingungsoperator"</string>
+    <string name="loopParam3">"'Wiederholung' - Bedingungswert 1"</string>
+    <string name="loopParam4">"'Wiederholung' - Bedingungswert 2"</string>
+    <string name="forParam1">"'Nummernschleife' - Zählvariable"</string>
+    <string name="forParam2">"'Nummernschleife' - Von"</string>
+    <string name="forParam3">"'Nummernschleife' - Bis"</string>
+    <string name="splitParam1">"'Splitten' - Quelle"</string>
+    <string name="splitParam2">"'Splitten' - Trenner"</string>
+    <string name="splitParam3">"'Splitten' - Zielliste"</string>
+    <string name="concatParam1">"'Verketten' - Linksquelle"</string>
+    <string name="concatParam2">"'Verketten' - Rechtsquelle"</string>
+    <string name="concatParam3">"'Verketten' - Ziel"</string>
+    <string name="leftParam1">"'Linkstext' - Quelle"</string>
+    <string name="leftParam2">"'Linkstext' - Zeichenanzahl"</string>
+    <string name="leftParam3">"'Linkstext' - Ziel"</string>
+    <string name="rightParam1">"'Rechtstext' - Quelle"</string>
+    <string name="rightParam2">"'Rechtstext' - Zeichenanzahl"</string>
+    <string name="rightParam3">"'Rechtstext' - Ziel"</string>
+    <string name="instrParam1">"'Vorwärtssuche' - Quelle"</string>
+    <string name="instrParam2">"'Vorwärtssuche' - Startposition"</string>
+    <string name="instrParam3">"'Vorwärtssuche' - Suchtext"</string>
+    <string name="instrParam4">"'Vorwärtssuche' - Ziel"</string>
+    <string name="lenParam1">"'Länge' - Quelle"</string>
+    <string name="lenParam2">"'Länge' - Ziel"</string>
+    <string name="instrrevParam1">"'Rückwärtssuche' - Quelle"</string>
+    <string name="instrrevParam2">"'Rückwärtssuche' - Startposition"</string>
+    <string name="instrrevParam3">"'Rückwärtssuche' - Suchtext"</string>
+    <string name="instrrevParam4">"'Rückwärtssuche' - Ziel"</string>
+    <string name="httpgetParam1">"'Get-Download' - URL"</string>
+    <string name="httpgetParam2">"'Get-Download' - Modus"</string>
+    <string name="httpgetParam3">"'Get-Download' - Ziel"</string>
+    <string name="httppostParam1">"'Post-Download' - URL"</string>
+    <string name="httppostParam2">"'Post-Download' - Modus"</string>
+    <string name="httppostParam3">"'Post-Download' - Ziel"</string>
+    <string name="execjsParam1">"'Javascript-Befehl' - Befehl"</string>
+    <string name="execjsParam2">"'Javascript-Befehl' - Ziel"</string>
+    <string name="makemsgParam1">"'Meldung' - Betreff"</string>
+    <string name="makemsgParam2">"'Meldung' - Inhalt"</string>
+    <string name="makemsgParam3">"'Meldung' - Bild-URL"</string>
+    <string name="makemsgParam4">"'Meldung' - Link-URL"</string>
+    <string name="reverseParam1">"'Text spiegeln' - Quelle"</string>
+    <string name="reverseParam2">"'Text spiegeln' - Ziel"</string>
 
     <string-array name="ifOperations">
         <item>lt</item>
@@ -151,8 +195,10 @@
         <item>replace</item>
         <item>putlist</item>
         <item>foreach</item>
+        <item>getlist</item>
+        <item>remlist</item>
         <item>if</item>
-        <item>doloop</item>
+        <item>loop</item>
         <item>for</item>
         <item>split</item>
         <item>concat</item>
@@ -186,15 +232,18 @@
         <item>Linksglätten (Quelle, Ziel)</item>
         <item>Rechtsglätten (Quelle, Ziel)</item>
         <item>Ersetzen (Quelle, Suchen, Ersetzen, Ziel)</item>
-        <item>Liste ergänzen (Quelle, Element, Ziel)</item>
-        <item>Listenschleife (Liste, Schleifenvariable, Wiederholungsschritte)</item>
+        <item>Liste ergänzen (Liste, Element)</item>
+        <item>Listenschleife (Liste, Elementvariable, Wiederholungsschritte)</item>
+        <item>Listenelement holen (Liste, Position, Ziel)</item>
+        <item>Listenelement löschen (Liste, Position)</item>
         <item>Bedingung (Operator, Wert 1, Wert 2, Dann-Schritte, Sonst-Schritte)</item>
-        <item>Wiederholung (Kopfbedingung, Fußbedingung, Wiederholungsschritte)</item>
-        <item>Nummernschleife (Von, Bis, Wiederholungsschritte)</item>
-        <item>Splitten (Quelle, Trenner, Ziel)</item>
+        <item>Wiederholung (Typ, Bedingung, Wiederholungsschritte)</item>
+        <!-- Typ: solange x Schritte, bis x Schritte, Schritte solange x, Schritte bis x -->
+        <item>Nummernschleife (Zählvariable, Von, Bis, Wiederholungsschritte)</item>
+        <item>Splitten (Quelle, Trenner, Zielliste)</item>
         <item>Verketten (Linksquelle, Rechtsquelle, Ziel)</item>
         <item>Linkstext (Quelle, Zeichenanzahl, Ziel)</item>
-        <item>Rechtstext (Quelle, Zeichenanzahl, Ziel)t</item>
+        <item>Rechtstext (Quelle, Zeichenanzahl, Ziel)</item>
         <item>Vorwärtssuche (Quelle, Startposition, Suchtext, Ziel)</item>
         <item>Länge (Quelle, Ziel)</item>
         <item>Rückwärtssuche (Quelle, Startposition, Suchtext, Ziel)</item>
@@ -202,7 +251,7 @@
         <!-- Modus: ob full oder thin client -->
         <item>Post-Download (URL, Modus, Ziel)</item>
         <item>Javascript-Befehl (Befehl, Ziel)</item>
-        <item>Meldung (Betreff, Inhalt, Bild, Link)</item>
+        <item>Meldung (Betreff, Inhalt, Bild-URL, Link-URL)</item>
         <item>Text spiegeln (Quelle, Ziel)</item>
         <item>Nummernschleifenausstieg</item>
         <item>Listenschleifenausstieg</item>
