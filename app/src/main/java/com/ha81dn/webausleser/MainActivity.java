@@ -811,7 +811,7 @@ public class MainActivity extends AppCompatActivity {
                                     // solche Params nur anbieten, wenn ihr Elternstep nicht Quelle
                                     // ist, damit weder eine Rekursion (beim Kopieren) noch eine
                                     // Hierarchielücke (beim Verschieben) entsteht
-                                    DatabaseHandler.selectAsList(db, "select id,value,ifnull((select 1 from steps where steps.parent_id=a.id limit 1),0) from params a where a.step_id = ? and a.parental_flag = 1 order by idx", new String[]{Integer.toString(selectedId)}, paramIds, null, stepParams, paramIsParent);
+                                    DatabaseHandler.selectAsList(db, "select id,value,ifnull((select 1 from steps where steps.parent_id=a.id" + (moveFlag ? " and steps.id not in " + getInList(itemsFrom, datasetFrom) : "") + " limit 1),0) from params a where a.step_id = ? and a.parental_flag = 1 order by idx", new String[]{Integer.toString(selectedId)}, paramIds, null, stepParams, paramIsParent);
                                     for (int j = 0; j < stepParams.size(); j++) {
                                         steps.add(++i, stepParams.get(j));
                                         ids.add(i, paramIds.get(j));
