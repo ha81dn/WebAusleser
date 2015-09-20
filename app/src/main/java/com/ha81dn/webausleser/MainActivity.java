@@ -404,6 +404,7 @@ public class MainActivity extends AppCompatActivity {
                 public boolean onTouch(View v, MotionEvent event) {
                     if (event.getAction() == MotionEvent.ACTION_UP) {
                         if (itemsMoved) {
+                            itemsMoved = false;
                             Intent intentUpdate = new Intent();
                             intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
                             intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
@@ -2255,7 +2256,7 @@ public class MainActivity extends AppCompatActivity {
                 if (mDataset.get(position).getId() == -1) {
                     holder.mTextView.setText(Html.fromHtml("<i>" + mDataset.get(position).getName() + "</i>"));
                 } else
-                    holder.mTextView.setText(mDataset.get(position).getSortNr() + ": " + mDataset.get(position).getName());
+                    holder.mTextView.setText(mDataset.get(position).getName());
                 // Highlight the item if it's selected
                 holder.itemView.setSelected(isSelected(position));
             }
@@ -2487,6 +2488,7 @@ public class MainActivity extends AppCompatActivity {
                             c.moveToFirst();
                             c.close();
                         }
+                        mAdapter.notifyItemChanged(i);
                     }
                 } else if (activeSection.equals("STEPS")) {
                     ArrayList<Step> list = ((StepAdapter) mAdapter).mDataset;
@@ -2498,6 +2500,7 @@ public class MainActivity extends AppCompatActivity {
                             c.moveToFirst();
                             c.close();
                         }
+                        mAdapter.notifyItemChanged(i);
                     }
                 }
                 db.close();
