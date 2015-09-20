@@ -225,8 +225,8 @@
         <item>Subtrahieren (Quelle, Subtrahend, Ziel)</item>
         <item>Multiplizieren (Quelle, Faktor, Ziel)</item>
         <item>Dividieren (Quelle, Divisor, Ziel)</item>
-        <item>Inkrementieren (Quelle, Ziel)</item>
-        <item>Dekrementieren (Quelle, Ziel)</item>
+        <item>Inkrementieren (Variable)</item>
+        <item>Dekrementieren (Variable)</item>
         <item>Extrahieren (Quelle, Start, Länge, Ziel)</item>
         <item>Glätten (Quelle, Ziel)</item>
         <item>Linksglätten (Quelle, Ziel)</item>

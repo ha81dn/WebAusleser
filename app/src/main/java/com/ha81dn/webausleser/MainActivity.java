@@ -29,6 +29,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -346,6 +347,7 @@ public class MainActivity extends AppCompatActivity {
         static TextView navTitle;
         static RecyclerView mRecyclerView;
         static FloatingActionButton fab;
+        static boolean itemsMoved = false;
         private RecyclerView.LayoutManager mLayoutManager;
         private SelectableAdapter mAdapter = null;
         private mainBroadcastReceiver mainBR;
@@ -397,6 +399,21 @@ public class MainActivity extends AppCompatActivity {
             // use a linear layout manager
             mLayoutManager = new LinearLayoutManager(context);
             mRecyclerView.setLayoutManager(mLayoutManager);
+            mRecyclerView.setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    if (event.getAction() == MotionEvent.ACTION_UP) {
+                        if (itemsMoved) {
+                            Intent intentUpdate = new Intent();
+                            intentUpdate.setAction("com.ha81dn.webausleser.ASYNC_MAIN");
+                            intentUpdate.addCategory(Intent.CATEGORY_DEFAULT);
+                            intentUpdate.putExtra("SORTING", "SAVE_SORT_NOW");
+                            getActivity().sendBroadcast(intentUpdate);
+                        }
+                    }
+                    return false;
+                }
+            });
             navTitle.setText(getString(R.string.navTitleSources));
 
             return rootView;
@@ -1336,25 +1353,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onMoved(RecyclerView recyclerView, RecyclerView.ViewHolder viewHolder, int fromPos, RecyclerView.ViewHolder target, int toPos, int x, int y) {
-                SQLiteDatabase db = DatabaseHandler.getInstance(getActivity()).getWritableDatabase();
-                Cursor c;
-
-                if (activeSection.equals("ACTIONS")) {
-                    ArrayList<Action> list = ((ActionAdapter) mAdapter).mDataset;
-                    for (int i = Math.min(fromPos, toPos); i <= Math.max(fromPos, toPos); i++) {
-                        c = db.rawQuery("update actions set sort_nr = ? where id = ?", new String[]{Integer.toString(i), Integer.toString(list.get(i).getId())});
-                        c.moveToFirst();
-                        c.close();
-                    }
-                } else if (activeSection.equals("STEPS")) {
-                    ArrayList<Step> list = ((StepAdapter) mAdapter).mDataset;
-                    for (int i = Math.min(fromPos, toPos); i <= Math.max(fromPos, toPos); i++) {
-                        c = db.rawQuery("update steps set sort_nr = ? where id = ?", new String[]{Integer.toString(i), Integer.toString(list.get(i).getId())});
-                        c.moveToFirst();
-                        c.close();
-                    }
-                }
-                db.close();
+                PlaceholderFragment.itemsMoved = true;
             }
 
             @Override
@@ -2256,7 +2255,7 @@ public class MainActivity extends AppCompatActivity {
                 if (mDataset.get(position).getId() == -1) {
                     holder.mTextView.setText(Html.fromHtml("<i>" + mDataset.get(position).getName() + "</i>"));
                 } else
-                    holder.mTextView.setText(mDataset.get(position).getName());
+                    holder.mTextView.setText(mDataset.get(position).getSortNr() + ": " + mDataset.get(position).getName());
                 // Highlight the item if it's selected
                 holder.itemView.setSelected(isSelected(position));
             }
@@ -2461,17 +2460,47 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onReceive(Context context, Intent intent) {
                 String tmp = intent.getStringExtra("TAPITEM");
-                if (tmp != null)
+                if (tmp != null) {
                     handleTaps(context, tmp, intent.getIntExtra("ID", -1), intent.getStringExtra("NAME"), intent.getIntExtra("FOCUS", -1));
-                else {
-                    tmp = intent.getStringExtra("INSERT");
-                    //noinspection StatementWithEmptyBody
-                    if (tmp != null)
-                        handleInserts(context, tmp, intent.getStringExtra("NAME"), intent.getIntExtra("ID", -1));
-                    else {
+                    return;
+                }
+                tmp = intent.getStringExtra("INSERT");
+                if (tmp != null) {
+                    handleInserts(context, tmp, intent.getStringExtra("NAME"), intent.getIntExtra("ID", -1));
+                    return;
+                }
+                tmp = intent.getStringExtra("SORTING");
+                if (tmp != null) handleSort(context);
+            }
 
+            private void handleSort(Context context) {
+                SQLiteDatabase db = DatabaseHandler.getInstance(context).getWritableDatabase();
+                Cursor c;
+
+                if (activeSection.equals("ACTIONS")) {
+                    ArrayList<Action> list = ((ActionAdapter) mAdapter).mDataset;
+                    int sortNr = 0;
+                    for (int i = 0; i < list.size(); i++) {
+                        list.get(i).setSortNr(sortNr);
+                        c = db.rawQuery("update actions set sort_nr = ? where id = ?", new String[]{Integer.toString(sortNr++), Integer.toString(list.get(i).getId())});
+                        if (c != null) {
+                            c.moveToFirst();
+                            c.close();
+                        }
+                    }
+                } else if (activeSection.equals("STEPS")) {
+                    ArrayList<Step> list = ((StepAdapter) mAdapter).mDataset;
+                    int sortNr = 0;
+                    for (int i = 0; i < list.size(); i++) {
+                        list.get(i).setSortNr(sortNr);
+                        c = db.rawQuery("update steps set sort_nr = ? where id = ?", new String[]{Integer.toString(sortNr++), Integer.toString(list.get(i).getId())});
+                        if (c != null) {
+                            c.moveToFirst();
+                            c.close();
+                        }
                     }
                 }
+                db.close();
             }
 
             private void handleInserts(Context context, String section, String name, int id) {
@@ -2953,78 +2982,110 @@ public class MainActivity extends AppCompatActivity {
                             break;
 
                         case "add":
-
-                            switch (params.size()) {
-                                case 0:
-
-                                    break;
-
-                                case 1:
-
-                                    break;
-                            }
-                            break;
-
                         case "subtract":
-
-                            switch (params.size()) {
-                                case 0:
-
-                                    break;
-
-                                case 1:
-
-                                    break;
-                            }
-                            break;
-
                         case "multiply":
-
-                            switch (params.size()) {
-                                case 0:
-
-                                    break;
-
-                                case 1:
-
-                                    break;
-                            }
-                            break;
-
                         case "divide":
 
                             switch (params.size()) {
                                 case 0:
 
+                                    // asmd, Quelle
+
+                                    createParamByWizard(
+                                            context,
+                                            db,
+                                            params,
+                                            false,
+                                            true,
+                                            false,
+                                            false,
+                                            null,
+                                            0,
+                                            false,
+                                            null,
+                                            -1,
+                                            backFromFirstParam,
+                                            backFromFurtherParam,
+                                            backFromInnerDialog,
+                                            cancelWizard);
+
                                     break;
 
                                 case 1:
+
+                                    // asmd, Summand/Subtrahend/Faktor/Divisor
+
+                                    createParamByWizard(
+                                            context,
+                                            db,
+                                            params,
+                                            false,
+                                            true,
+                                            false,
+                                            false,
+                                            null,
+                                            1,
+                                            true,
+                                            null,
+                                            -1,
+                                            backFromFirstParam,
+                                            backFromFurtherParam,
+                                            backFromInnerDialog,
+                                            cancelWizard);
+
+                                    break;
+
+                                case 2:
+
+                                    // asmd, Ziel
+
+                                    createParamByWizard(
+                                            context,
+                                            db,
+                                            params,
+                                            false,
+                                            false,
+                                            true,
+                                            false,
+                                            null,
+                                            2,
+                                            false,
+                                            null,
+                                            1,
+                                            backFromFirstParam,
+                                            backFromFurtherParam,
+                                            backFromInnerDialog,
+                                            cancelWizard);
 
                                     break;
                             }
                             break;
 
                         case "incr":
-
-                            switch (params.size()) {
-                                case 0:
-
-                                    break;
-
-                                case 1:
-
-                                    break;
-                            }
-                            break;
-
                         case "decr":
 
                             switch (params.size()) {
                                 case 0:
 
-                                    break;
+                                    // indecr, Variable
 
-                                case 1:
+                                    createParamByWizard(
+                                            context,
+                                            db,
+                                            params,
+                                            false,
+                                            false,
+                                            false,
+                                            false,
+                                            null,
+                                            0,
+                                            false,
+                                            null,
+                                            0,
+                                            backFromFirstParam,
+                                            backFromFurtherParam,
+                                            backFromInnerDialog,
+                                            cancelWizard);
 
                                     break;
                             }
@@ -3160,7 +3221,7 @@ public class MainActivity extends AppCompatActivity {
                                             context,
                                             db,
                                             params,
-                                            params.get(0).getValue().contains("list"),
+                                            params.get(2).getValue().contains("list"),
                                             false,
                                             false,
                                             false,

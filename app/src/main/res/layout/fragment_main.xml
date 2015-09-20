@@ -75,7 +75,6 @@
         android:onClick="fabOnClick"
         android:src="@drawable/ic_add_black"
         app:backgroundTint="@color/primary"
-        app:borderWidth="@dimen/fab_border_width"
         app:elevation="2dp"
         app:pressedTranslationZ="4dp"
         app:rippleColor="@android:color/white" />
