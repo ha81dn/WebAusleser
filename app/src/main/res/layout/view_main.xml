@@ -6,7 +6,7 @@
     android:background="@drawable/ripple_selector"
     android:ellipsize="end"
     android:gravity="center_vertical|center_horizontal"
-    android:singleLine="true"
+    android:maxLines="1"
     android:text="test"
     android:textColor="@color/text_selector"
     android:textSize="30dp" />

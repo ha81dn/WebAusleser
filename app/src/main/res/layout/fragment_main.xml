@@ -34,7 +34,7 @@
     </android.support.design.widget.AppBarLayout>
 
     <LinearLayout
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/accent"
         android:orientation="vertical">
@@ -52,9 +52,10 @@
             android:gravity="center"
             android:linksClickable="true"
             android:text="Navigationskopfzeile"
+            android:textColorLink="#0FF"
             android:textAppearance="?android:attr/textAppearanceLarge"
             android:textSize="@dimen/abc_text_size_title_material_toolbar"
-            android:textStyle="bold"/>
+            android:textStyle="bold" />
 
         <android.support.v7.widget.RecyclerView xmlns:android="http://schemas.android.com/apk/res/android"
             android:id="@+id/main_recycler"
